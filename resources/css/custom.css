@@ -1,0 +1,142 @@
+/* Status badges */
+.badge-cpb {
+    font-size: 0.8em;
+    padding: 4px 8px;
+}
+
+.badge-overdue {
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Timeline styling */
+.cpb-timeline {
+    position: relative;
+    padding-left: 40px;
+    margin: 20px 0;
+}
+
+.cpb-timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-step {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-step-icon {
+    position: absolute;
+    left: -40px;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #6c757d;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-step.active .timeline-step-icon {
+    background: #007bff;
+    animation: pulse 2s infinite;
+}
+
+.timeline-step.completed .timeline-step-icon {
+    background: #28a745;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+}
+
+/* Table styling */
+.table-cpb tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table-cpb .overdue-row {
+    background-color: #f8d7da !important;
+}
+
+.table-cpb .released-row {
+    background-color: #d1ecf1 !important;
+}
+
+/* Card styling */
+.card-cpb {
+    border-top: 3px solid #007bff;
+}
+
+.card-cpb-overdue {
+    border-top: 3px solid #dc3545;
+}
+
+.card-cpb-released {
+    border-top: 3px solid #28a745;
+}
+
+/* Progress bar animation */
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+/* Handover modal */
+.handover-modal .modal-header {
+    background: linear-gradient(to right, #28a745, #20c997);
+    color: white;
+}
+
+/* Notification badge */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    padding: 5px 10px;
+    border-radius: 50%;
+    background: #dc3545;
+    color: white;
+    font-size: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 5px;
+        width: 100%;
+    }
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .table-cpb {
+        font-size: 12px;
+    }
+}

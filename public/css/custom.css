@@ -1,0 +1,303 @@
+/* Modern Green Glassmorphism Theme */
+.navbar-custom-green {
+    /* Semitransparent Green Gradient */
+    background: linear-gradient(135deg, rgba(15, 155, 15, 0.85) 0%, rgba(0, 100, 0, 0.9) 100%);
+    /* Glassmorphism Blur Effect */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    color: #ffffff;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Brand & Links Text */
+.navbar-custom-green .navbar-brand,
+.navbar-custom-green .nav-link,
+.navbar-custom-green .btn-navbar {
+    color: rgba(255, 255, 255, 0.95) !important;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+/* Hover Effects with "Lift" and Glow */
+.navbar-custom-green .nav-link:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+}
+
+/* Active State Pulse Animation */
+.navbar-custom-green .nav-link.active {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    animation: activePulse 2s infinite;
+}
+
+@keyframes activePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
+/* Modern Form Inputs */
+.navbar-custom-green .form-control-navbar {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.navbar-custom-green .form-control-navbar:focus {
+    background-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.navbar-custom-green .form-control-navbar::placeholder {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Dropdown Animation & Styling */
+.dropdown-menu {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    animation: fadeInSlide 0.3s ease forwards;
+    margin-top: 10px !important;
+    /* Space from navbar */
+    overflow: hidden;
+}
+
+.dropdown-item {
+    padding: 10px 20px;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f0fdf4;
+    /* Very light green tint */
+    color: #006400;
+    /* Dark green text */
+    padding-left: 25px;
+    /* Slide right effect */
+}
+
+/* Keyframes for Dropdown Entrance */
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Badge Styling */
+.navbar-badge {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* =========================================
+   MODERN LOGIN PAGE STYLES
+   ========================================= */
+
+/* Background with rich green gradient */
+.login-page {
+    background: linear-gradient(135deg, #0f9b0f 0%, #004d00 100%) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Abstract circles for background visual interest */
+.login-page::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    z-index: 0;
+}
+
+.login-page::after {
+    content: '';
+    position: absolute;
+    bottom: -15%;
+    left: -10%;
+    width: 500px;
+    height: 500px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    z-index: 0;
+}
+
+/* Glassmorphism Card Effect */
+.login-box {
+    width: 100% !important;
+    max-width: 400px;
+    margin: 0 20px;
+    z-index: 1;
+    animation: slideUpFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.login-card-body {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 2.5rem !important;
+}
+
+/* Logo Styling */
+.login-logo a {
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: 700;
+    font-size: 2.2rem;
+    letter-spacing: 1px;
+    margin-bottom: 25px;
+    display: inline-block;
+}
+
+.login-box-msg {
+    color: #555;
+    font-size: 1.1rem;
+    padding-bottom: 25px;
+}
+
+/* Input Fields Modernization */
+.input-group-text {
+    background-color: transparent !important;
+    border-left: none !important;
+    border-color: #ddd !important;
+    border-radius: 0 50px 50px 0 !important;
+    color: #0f9b0f;
+}
+
+.login-card-body .form-control {
+    border-right: none !important;
+    border-color: #ddd !important;
+    border-radius: 50px 0 0 50px !important;
+    padding-left: 20px;
+    height: 45px;
+    font-size: 1rem;
+    background-color: rgba(248, 249, 250, 0.7);
+    transition: all 0.3s ease;
+}
+
+.login-card-body .form-control:focus {
+    background-color: #fff;
+    box-shadow: none;
+    border-color: #0f9b0f !important;
+}
+
+.login-card-body .form-control:focus+.input-group-append .input-group-text {
+    border-color: #0f9b0f !important;
+    color: #006400;
+}
+
+.input-group {
+    margin-bottom: 1.5rem !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+    border-radius: 50px;
+}
+
+/* Button Styling */
+.btn-primary {
+    background: linear-gradient(135deg, #0f9b0f 0%, #006400 100%) !important;
+    border: none !important;
+    border-radius: 50px !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 12px 20px;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(15, 155, 15, 0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(15, 155, 15, 0.5);
+    background: linear-gradient(135deg, #13b313 0%, #008000 100%) !important;
+}
+
+/* Links */
+.login-card-body a {
+    color: #0f9b0f;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.login-card-body a:hover {
+    color: #004d00;
+    text-decoration: none;
+}
+
+.icheck-primary>input:first-child:checked+input[type="hidden"]+label::before,
+.icheck-primary>input:first-child:checked+label::before {
+    background-color: #0f9b0f;
+    border-color: #0f9b0f;
+}
+
+/* Animation */
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================= */
+
+@media (max-width: 576px) {
+    .login-box {
+        margin: 0 15px;
+        max-width: 100%;
+    }
+
+    /* Reduce padding on mobile */
+    .login-card-body {
+        padding: 2rem 1.5rem !important;
+    }
+
+    /* Smaller logo on mobile */
+    .login-logo a {
+        font-size: 1.8rem;
+        margin-bottom: 20px;
+    }
+
+    /* Hide background shapes on very small screens to save space/performance */
+    .login-page::before,
+    .login-page::after {
+        opacity: 0.5;
+        /* Fade them out slightly instead of removing */
+        transform: scale(0.8);
+    }
+}
