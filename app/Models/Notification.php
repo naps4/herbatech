@@ -22,7 +22,8 @@ class Notification extends Model
     protected $casts = [
         'is_read' => 'boolean',
         'data' => 'array',
-        'read_at' => 'datetime'
+        'read_at' => 'datetime',
+        'created_at' => 'datetime'
     ];
 
     // Relationships - Tentukan foreign key secara eksplisit

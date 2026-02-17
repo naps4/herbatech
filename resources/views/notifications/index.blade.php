@@ -73,7 +73,7 @@
                                     </td>
                                     <td>
                                         {{ $notification->created_at->format('d/m/Y') }}<br>
-                                        <small>{{ $notification->created_at->format('H:i:s') }}</small>
+                                        <small>{{ $notification->created_at?->format('H:i:s') ?? '' }}</small>
                                     </td>
                                     <td>
                                         @if($notification->is_read)
@@ -81,7 +81,7 @@
                                                 <i class="fas fa-check"></i> Dibaca
                                             </span>
                                             <br>
-                                            <small>{{ $notification->read_at->format('d/m/Y H:i') }}</small>
+                                            <small>{{ $notification->read_at?->format('d/m/Y H:i') ?? '-' }}</small>
                                         @else
                                             <span class="badge bg-warning">
                                                 <i class="fas fa-envelope"></i> Baru

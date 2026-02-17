@@ -11,7 +11,8 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
+    /** @var \App\Models\User $user*/    
+    $user = auth()->user();
         $notifications = $user->unreadNotifications()->take(5)->get();
         
         // Get CPBs based on user role

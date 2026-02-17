@@ -5,8 +5,9 @@ namespace App\Listeners;
 use App\Events\CPBOverdue;
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class SendOverdueNotification
+class SendOverdueNotification implements ShouldQueue
 {
     public function handle(CPBOverdue $event)
     {

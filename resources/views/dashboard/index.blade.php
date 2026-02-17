@@ -35,7 +35,7 @@
                     @endcan
                     
                     <div class="col-lg-3 col-6">
-                        <a href="{{ route('cpb.index', ['overdue' => 'true']) }}" class="btn btn-app bg-danger">
+                        <a href="{{ route('cpb.index', ['overdue' => 'yes']) }}" class="btn btn-app bg-danger">
                             <i class="fas fa-exclamation-triangle"></i> Overdue
                             @php
                                 $overdueCount = \App\Models\CPB::where('is_overdue', true)->count();
@@ -164,7 +164,7 @@
                                         <div class="progress-group">
                                             <div class="progress progress-xs">
                                                 @php
-                                                    $percentage = min(100, ($cpb->duration_in_current_status / $cpb->time_limit) * 100);
+                                                    $percentage = ($cpb->time_limit > 0) ? min(100, ($cpb->duration_in_current_status / $cpb->time_limit) * 100) : 0;
                                                     $color = $cpb->is_overdue ? 'danger' : ($percentage > 80 ? 'warning' : 'success');
                                                 @endphp
                                                 <div class="progress-bar bg-{{ $color }}" style="width: {{ $percentage }}%"></div>

@@ -17,10 +17,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('cpb:check-overdue')->hourly();
         
         // Send daily reports at 8 AM
-        $schedule->command('cpb:daily-report')->dailyAt('08:00');
+        $schedule->command('activitylog:clean')->dailyAt('08:00');
     }
 
-    protected function commands()
+    protected function commands(): void
     {
         $this->load(__DIR__.'/Commands');
         require base_path('routes/console.php');
