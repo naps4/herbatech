@@ -25,33 +25,37 @@ class CPBController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        
         $query = CPB::query();
         
-        // Filters
+        // --- PERBAIKAN: Default hanya tampilkan yang belum released ---
+        if ($request->get('status') === 'active') {
+            $query->where('status', '!=', 'released');
+        } elseif ($request->get('status') === 'released') {
+            $query->where('status', 'released');
+        } elseif ($request->get('status') === 'all') {
+            // Jangan tambahkan where status apa pun agar semua muncul
+        } else {
+            $query->where('status', '!=', 'released');
+        }
+        
+        // Filters lainnya
         if ($request->has('type') && $request->type != 'all') {
             $query->where('type', $request->type);
         }
-        
-        if ($request->has('status') && $request->status != 'all') {
-            $query->where('status', $request->status);
+
+        if ($request->has('start_date')) {
+            $query->whereDate('created_at', $request->start_date);
         }
         
         if ($request->has('batch_number')) {
             $query->where('batch_number', 'like', '%' . $request->batch_number . '%');
         }
         
-        // Role-based filtering
+        // Role-based filtering (Tetap gunakan perbaikan role sebelumnya)
         if (!$user->isSuperAdmin() && !$user->isQA()) {
             $query->where(function($q) use ($user) {
-                $q->where('current_department_id', $user->id)
-                  ->orWhere('created_by', $user->id)
-                  ->orWhere('status', 'released');
-                  
-                // PPIC Allow viewing CPB in QA (to make requests)
-                if ($user->role === 'ppic') {
-                    $q->orWhere('status', 'qa');
-                }
+                $q->where('status', $user->role) // Filter sesuai role departemen
+                  ->orWhere('created_by', $user->id);
             });
         }
         
@@ -89,7 +93,8 @@ class CPBController extends Controller
             'batch_number' => 'required|unique:cpbs|max:50',
             'type' => 'required|in:pengolahan,pengemasan',
             'product_name' => 'required|max:100',
-            'file' => 'required|file|max:10240', // Required attachment
+            'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Limit 20MB
+            'description' => 'nullable|string|max:255',
         ]);
         
         DB::beginTransaction();
@@ -176,7 +181,7 @@ class CPBController extends Controller
                            ->get();
         
         $nextDepartment = $cpb->getNextDepartment();
-        $canHandover = true; // Temporary
+        $canHandover = Gate::allows('handover', $cpb); // Temporary
         
         return view('cpb.show', compact('cpb', 'handoverLogs', 'nextDepartment', 'canHandover'));
     }
@@ -344,7 +349,7 @@ class CPBController extends Controller
     public function uploadAttachment(Request $request, CPB $cpb)
     {
         $request->validate([
-            'file' => 'required|file|max:10240', // Max 10MB
+            'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:10240', // Tambahkan mimes
             'description' => 'nullable|string|max:255',
         ]);
 

@@ -17,13 +17,13 @@
 <div class="col-lg-3 col-6">
     <div class="small-box bg-success">
         <div class="inner">
-            <h3>{{ $stats['active_cpbs'] ?? 0 }}</h3>
+            <h3>{{ $stats['active_cpbs'] }}</h3>
             <p>CPB Aktif</p>
         </div>
         <div class="icon">
-            <i class="fas fa-tasks"></i>
+            <i class="fas fa-file-alt"></i>
         </div>
-        <a href="{{ route('cpb.index', ['status' => 'all', 'overdue' => 'false']) }}" class="small-box-footer">
+        <a href="{{ route('cpb.index', ['status' => 'active']) }}" class="small-box-footer">
             More info <i class="fas fa-arrow-circle-right"></i>
         </a>
     </div>
@@ -53,7 +53,8 @@
         <div class="icon">
             <i class="fas fa-calendar-day"></i>
         </div>
-        <a href="{{ route('cpb.index', ['start_date' => date('Y-m-d')]) }}" class="small-box-footer">
+        <!-- {{-- Tambahkan status=all agar data yang sudah released tetap muncul untuk filter hari ini --}} -->
+        <a href="{{ route('cpb.index', ['start_date' => date('Y-m-d'), 'status' => 'all']) }}" class="small-box-footer">
             More info <i class="fas fa-arrow-circle-right"></i>
         </a>
     </div>

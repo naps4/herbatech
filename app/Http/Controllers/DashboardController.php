@@ -11,31 +11,33 @@ class DashboardController extends Controller
 {
     public function index()
     {
-    /** @var \App\Models\User $user*/    
-    $user = auth()->user();
+        /** @var \App\Models\User $user*/    
+        $user = auth()->user();
         $notifications = $user->unreadNotifications()->take(5)->get();
         
-        // Get CPBs based on user role
-        if ($user->isSuperAdmin() || $user->isQA()) {
-            // Show all active CPBs
-            $cpbs = CPB::where('status', '!=', 'released')
-                ->orderBy('is_overdue', 'desc')
-                ->orderBy('entered_current_status_at', 'asc')
-                ->paginate(20);
-        } else {
-            // Show CPBs in user's department
-            $cpbs = CPB::where('current_department_id', $user->id)
-                ->orderBy('is_overdue', 'desc')
-                ->orderBy('entered_current_status_at', 'asc')
-                ->paginate(20);
-        }
+        // Siapkan query dasar untuk statistik agar sinkron dengan role
+        $statsQuery = \App\Models\CPB::query();
         
-        // Statistics
+        // Role-based filtering untuk Daftar CPB dan Statistik
+        if (!$user->isSuperAdmin() && !$user->isQA()) {
+            $statsQuery->where(function($q) use ($user) {
+                $q->where('status', $user->role) // Berdasarkan departemen/role saat ini
+                  ->orWhere('created_by', $user->id); // Atau yang dibuat sendiri
+            });
+        }
+    
+        // Ambil data CPB untuk tabel (menggunakan query yang sudah difilter role)
+        $cpbs = (clone $statsQuery)->where('status', '!=', 'released')
+            ->orderBy('is_overdue', 'desc')
+            ->orderBy('entered_current_status_at', 'asc')
+            ->paginate(20);
+        
+        // Hitung Statistik berdasarkan query yang sudah difilter role
         $stats = [
-            'total_cpbs' => CPB::count(),
-            'active_cpbs' => CPB::where('status', '!=', 'released')->count(),
-            'overdue_cpbs' => CPB::where('is_overdue', true)->count(),
-            'today_cpbs' => CPB::whereDate('created_at', Carbon::today())->count(),
+            'total_cpbs'   => (clone $statsQuery)->count(),
+            'active_cpbs'  => (clone $statsQuery)->where('status', '!=', 'released')->count(),
+            'overdue_cpbs' => (clone $statsQuery)->where('is_overdue', true)->count(),
+            'today_cpbs'   => (clone $statsQuery)->whereDate('created_at', \Carbon\Carbon::today())->count(),
         ];
         
         return view('dashboard.index', compact('cpbs', 'notifications', 'stats'));

@@ -88,7 +88,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Daftar CPB</h3>
+                <h3 class="card-title">Daftar CPB </h3>
                 <div class="card-tools">
                     @can('create', App\Models\CPB::class)
                     <a href="{{ route('cpb.create') }}" class="btn btn-sm btn-primary">

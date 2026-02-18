@@ -103,12 +103,12 @@ class CPB extends Model
             'qa' => 24,
             'ppic' => 4,
             'wh' => 24,
-            'produksi' => $this->schedule_duration,
+            'produksi' => $this->schedule_duration > 0 ? $this->schedule_duration : 48, // Beri default jika 0
             'qc' => 4,
             'qa_final' => 24,
             'released' => 0
         ];
-
+    
         return $limits[$this->status] ?? 24;
     }
 
