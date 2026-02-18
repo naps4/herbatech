@@ -34,8 +34,8 @@ class CPBPolicy
         ]);
         
         // Super admin dan QA bisa melihat semua
-        if ($user->isSuperAdmin() || $user->isQA()) {
-            Log::info('CPBPolicy view check: SuperAdmin or QA - ALLOWED');
+        if ($user->isSuperAdmin() || $user->isQA()|| $user->isRND()) {
+            Log::info('CPBPolicy view check: SuperAdmin or QA or RND - ALLOWED');
             return true;
         }
         
@@ -75,7 +75,7 @@ class CPBPolicy
     public function create(User $user): bool
     {
         // Hanya RND dan super admin yang bisa membuat CPB
-        return $user->role === 'rnd' || $user->isSuperAdmin();
+        return $user->isRND() || $user->isSuperAdmin();
     }
 
     /**
@@ -83,17 +83,12 @@ class CPBPolicy
      */
     public function update(User $user, CPB $cpb): bool
     {
-        // Hanya RND yang bisa edit, dan hanya saat status masih RND
-        if ($user->role === 'rnd' && $cpb->status === 'rnd') {
-            return $cpb->created_by === $user->id || $user->isSuperAdmin();
+        if ($user->isRND() && $cpb->status === 'rnd') {
+        return $cpb->created_by === $user->id || $user->isSuperAdmin();
         }
-        
         return false;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, CPB $cpb): bool
     {
         // Hanya super admin yang bisa delete

@@ -72,6 +72,11 @@ class User extends Authenticatable
         return $this->role === 'qa';
     }
 
+    public function isRND()
+    {
+        return $this->role === 'rnd';
+    }
+
     /**
      * Get users who can receive handover from this user
      */

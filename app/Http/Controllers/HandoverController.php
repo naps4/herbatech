@@ -45,6 +45,7 @@ class HandoverController extends Controller
         DB::beginTransaction();
         
         try {
+            $nextStatus = $cpb->getNextDepartment();
             $receiver = User::findOrFail($request->receiver_id);
             
             // Verify receiver is in correct department
@@ -60,6 +61,8 @@ class HandoverController extends Controller
                 'entered_current_status_at' => now(),
                 'is_overdue' => false,
                 'overdue_since' => null,
+                'is_rework' => false, 
+                'rework_note' => null,
             ]);
             
             // Create handover log
@@ -79,7 +82,7 @@ class HandoverController extends Controller
             DB::commit();
             
             return redirect()->route('dashboard')
-                           ->with('success', 'CPB berhasil diserahkan ke ' . $nextStatus);
+                        ->with('success', 'CPB berhasil diserahkan ke ' . $nextStatus);
             
         } catch (\Exception $e) {
             DB::rollBack();

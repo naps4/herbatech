@@ -56,7 +56,6 @@
     </div>
     
     <div class="col-md-8">
-        <!-- User Activity Stats -->
         <div class="row">
             <div class="col-md-6">
                 <div class="small-box bg-info">

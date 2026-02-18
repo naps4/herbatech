@@ -19,8 +19,6 @@ class CPBController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        // Hapus authorizeResource jika bermasalah, kita handle manual
-        // $this->authorizeResource(CPB::class, 'cpb');
     }
     
     public function index(Request $request)
@@ -28,13 +26,11 @@ class CPBController extends Controller
         $user = auth()->user();
         $query = CPB::query();
         
-        // --- PERBAIKAN: Default hanya tampilkan yang belum released ---
         if ($request->get('status') === 'active') {
             $query->where('status', '!=', 'released');
         } elseif ($request->get('status') === 'released') {
             $query->where('status', 'released');
         } elseif ($request->get('status') === 'all') {
-            // Jangan tambahkan where status apa pun agar semua muncul
         } else {
             $query->where('status', '!=', 'released');
         }
@@ -53,13 +49,18 @@ class CPBController extends Controller
         }
         
         // Role-based filtering (Tetap gunakan perbaikan role sebelumnya)
-        if (!$user->isSuperAdmin() && !$user->isQA()) {
-            $query->where(function($q) use ($user) {
-                $q->where('status', $user->role) // Filter sesuai role departemen
-                  ->orWhere('created_by', $user->id);
-            });
-        }
-        
+        if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
+        $query->where(function($q) use ($user) {
+            $q->where('current_department_id', $user->id)
+              ->orWhere('created_by', $user->id)
+              ->orWhere('status', 'released');
+              
+            if ($user->role === 'ppic') {
+                $q->orWhere('status', 'qa');
+            }
+        });
+    }
+   
         // Overdue filter
         if ($request->has('overdue') && $request->overdue == 'true') {
             $query->where('is_overdue', true);
@@ -72,7 +73,57 @@ class CPBController extends Controller
         
         return view('cpb.index', compact('cpbs'));
     }
-    
+
+    public function reject(Request $request, CPB $cpb)
+    {
+        // Validasi wewenang (menggunakan policy yang sudah ada)
+        if (!Gate::allows('handover', $cpb)) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $previousStatus = $cpb->getPreviousDepartment();
+        
+        if (!$previousStatus) {
+            return back()->with('error', 'Batch sudah berada di tahap awal.');
+        }
+
+        $request->validate([
+            'rework_note' => 'required|string|max:1000',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $oldStatus = $cpb->status;
+
+            // Update status CPB dan tandai sebagai rework
+            $cpb->update([
+                'status' => $previousStatus,
+                'current_department_id' => null,
+                'entered_current_status_at' => now(),
+                'is_rework' => true,
+                'rework_note' => $request->rework_note,
+                'is_overdue' => false,
+            ]);
+
+            // Catat ke HandoverLog sebagai histori penolakan
+            HandoverLog::create([
+                'cpb_id' => $cpb->id,
+                'from_status' => $oldStatus,
+                'to_status' => $previousStatus,
+                'handed_by' => auth()->id(),
+                'handed_at' => now(),
+                'notes' => '[REJECT/REWORK]: ' . $request->rework_note,
+            ]);
+
+            DB::commit();
+            return redirect()->route('cpb.show', $cpb)
+                        ->with('warning', 'Batch berhasil dikembalikan ke ' . $previousStatus);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal memproses penolakan: ' . $e->getMessage());
+        }
+    }
+
     public function create()
     {
         // Cek apakah user bisa create CPB
@@ -349,27 +400,32 @@ class CPBController extends Controller
                        ->with('success', 'CPB berhasil dihapus.');
     }
 
-    public function uploadAttachment(Request $request, CPB $cpb)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:10240', // Tambahkan mimes
-            'description' => 'nullable|string|max:255',
-        ]);
+public function uploadAttachment(Request $request, CPB $cpb)
+{
+    $user = auth()->user();
+    
+    if ($user->role !== $cpb->status && !$user->isSuperAdmin()) {
+        return back()->with('error', 'Hanya bagian ' . strtoupper($cpb->status) . ' yang diizinkan mengunggah dokumen di tahap ini.');
+    }
 
+    $request->validate([
+        'file' => 'required|file|max:10240', // Max 10MB
+        'description' => 'nullable|string|max:255',
+    ]);
+
+    try {
         $file = $request->file('file');
         $fileName = $file->getClientOriginalName();
         $fileType = $file->getClientOriginalExtension();
         
-        // Store file
         $path = $file->storeAs(
             'attachments/' . $cpb->id,
             time() . '_' . $fileName,
             'public'
         );
 
-        // Create record
         $cpb->attachments()->create([
-            'uploaded_by' => auth()->id(),
+            'uploaded_by' => $user->id,
             'file_path' => $path,
             'file_name' => $fileName,
             'file_type' => $fileType,
@@ -377,7 +433,11 @@ class CPBController extends Controller
         ]);
 
         return back()->with('success', 'File berhasil diunggah.');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Gagal mengunggah file: ' . $e->getMessage());
     }
+}
+
     public function requestToQA(CPB $cpb)
     {
         // Hanya PPIC yang boleh request

@@ -30,7 +30,7 @@
 </div>
 
 <div class="col-lg-3 col-6">
-    <div class="small-box bg-warning">
+    <div class="small-box bg-danger">
         <div class="inner">
             <h3>{{ $stats['overdue_cpbs'] ?? 0 }}</h3>
             <p>CPB Overdue</p>

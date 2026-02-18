@@ -12,6 +12,7 @@
 @section('content')
 <div class="row">
     <div class="col-md-8">
+        {{-- Card Informasi Utama --}}
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Informasi CPB</h3>
@@ -26,411 +27,207 @@
                             <i class="fas fa-edit"></i> Edit
                         </a>
                     @endif
-                    @if($cpb->status == 'qa' && auth()->user()->role == 'ppic')
-                        <form action="{{ route('cpb.request', $cpb) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-sm btn-warning">
-                                <i class="fas fa-bullhorn"></i> Request CPB
-                            </button>
-                        </form>
-                    @endif
                 </div>
             </div>
             <div class="card-body">
+                {{-- Alert Rework Global --}}
+                @if($cpb->is_rework)
+                    <div class="alert alert-warning shadow-sm">
+                        <h5><i class="icon fas fa-exclamation-triangle"></i> Status: Rework (Perbaikan)</h5>
+                        <p class="mb-0"><strong>Alasan Penolakan:</strong> {{ $cpb->rework_note }}</p>
+                    </div>
+                @endif
+
                 <div class="row">
                     <div class="col-md-6">
                         <dl>
                             <dt>No. Batch:</dt>
                             <dd><strong>{{ $cpb->batch_number }}</strong></dd>
-                            
                             <dt>Jenis CPB:</dt>
-                            <dd>
-                                <span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }}">
-                                    {{ ucfirst($cpb->type) }}
-                                </span>
-                            </dd>
-                            
+                            <dd><span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }}">{{ ucfirst($cpb->type) }}</span></dd>
                             <dt>Nama Produk:</dt>
                             <dd>{{ $cpb->product_name }}</dd>
-                            
-                            <dt>Status:</dt>
+                            <dt>Status Tahap:</dt>
                             <dd>{!! $cpb->status_badge !!}</dd>
                         </dl>
                     </div>
                     <div class="col-md-6">
                         <dl>
-                            <dt>Durasi Produksi:</dt>
-                            <dd>{{ $cpb->schedule_duration }} jam</dd>
-                            
                             <dt>Dibuat Oleh:</dt>
                             <dd>{{ $cpb->creator->name ?? '-' }}</dd>
-                            
                             <dt>Lokasi Saat Ini:</dt>
                             <dd>{{ $cpb->currentDepartment->name ?? '-' }}</dd>
-                            
                             <dt>Status Waktu:</dt>
                             <dd>{!! $cpb->time_status_badge !!}</dd>
                         </dl>
                     </div>
                 </div>
-                
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="progress-group">
-                            <span class="progress-text">Progress CPB</span>
-                            <span class="float-right"><b>{{ $cpb->progress_percentage }}%</b></span>
-                            <div class="progress progress-sm">
-                                <div class="progress-bar bg-primary" style="width: {{ $cpb->progress_percentage }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
-        
-        <!-- Attachments Card -->
+
+        {{-- Card Lampiran Dokumen --}}
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Lampiran Dokumen</h3>
-                <div class="card-tools">
-                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                </div>
             </div>
             <div class="card-body">
                 @if($cpb->attachments->count() > 0)
-                    <table class="table table-sm">
+                    <table class="table table-sm table-hover">
                         <thead>
                             <tr>
                                 <th>Nama File</th>
                                 <th>Keterangan</th>
-                                <th>Diupload Oleh</th>
-                                <th>Waktu</th>
+                                <th>Oleh</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($cpb->attachments as $attachment)
                                 <tr>
-                                    <td>
-                                        <a href="{{ Storage::url($attachment->file_path) }}" target="_blank">
-                                            <i class="fas fa-file mr-1"></i> {{ $attachment->file_name }}
-                                        </a>
-                                    </td>
+                                    <td><i class="fas fa-file-alt text-primary mr-1"></i> {{ $attachment->file_name }}</td>
                                     <td>{{ $attachment->description ?? '-' }}</td>
                                     <td>{{ $attachment->uploader->name }}</td>
-                                    <td>{{ $attachment->created_at->format('d/m/y H:i') }}</td>
                                     <td>
-                                        <a href="{{ Storage::url($attachment->file_path) }}" class="btn btn-xs btn-default" download>
-                                            <i class="fas fa-download"></i>
-                                        </a>
+                                        <a href="{{ Storage::url($attachment->file_path) }}" class="btn btn-xs btn-default" download><i class="fas fa-download"></i></a>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 @else
-                    <p class="text-muted text-center my-3">Belum ada file yang dilampirkan.</p>
+                    <p class="text-muted text-center py-3">Belum ada file yang dilampirkan.</p>
                 @endif
-                
+
                 <hr>
-                
-                <form action="{{ route('cpb.upload', $cpb) }}" method="POST" enctype="multipart/form-data" class="mt-3">
-                    @csrf
-                    <div class="form-group">
-                        <label for="file">Upload File Baru</label>
-                        <div class="input-group">
-                            <div class="custom-file">
-                                <input type="file" class="custom-file-input" id="file" name="file" required>
-                                <label class="custom-file-label" for="file">Pilih file...</label>
+
+                {{-- Logic Hak Akses Upload --}}
+                @php $isHandler = (auth()->user()->role === $cpb->status || auth()->user()->isSuperAdmin()); @endphp
+
+                @if($isHandler)
+                    <form action="{{ route('cpb.upload', $cpb) }}" method="POST" enctype="multipart/form-data" class="mt-3">
+                        @csrf
+                        <div class="form-group">
+                            <label>Unggah File {{ $cpb->is_rework ? 'Hasil Perbaikan (Rework)' : 'Baru' }}</label>
+                            <div class="input-group">
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="file" name="file" required>
+                                    <label class="custom-file-label" for="file">Pilih file...</label>
+                                </div>
                             </div>
                         </div>
-                        <small class="text-muted">Max: 10MB. Format: PDF, Image, Doc, dll.</small>
+                        <div class="form-group">
+                            <input type="text" class="form-control form-control-sm" name="description" placeholder="Keterangan file (opsional)">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-upload"></i> Upload</button>
+                    </form>
+                @else
+                    <div class="alert alert-light border mt-2">
+                        <i class="fas fa-lock mr-2 text-muted"></i>
+                        Hanya departemen <strong>{{ strtoupper($cpb->status) }}</strong> yang dapat menambah dokumen di tahap ini.
                     </div>
-                    <div class="form-group">
-                        <input type="text" class="form-control" name="description" placeholder="Keterangan file (opsional)">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-upload"></i> Upload
-                    </button>
-                </form>
+                @endif
             </div>
         </div>
 
-        <!-- Handover History -->
+        {{-- Riwayat Handover --}}
         <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Riwayat Handover</h3>
-            </div>
+            <div class="card-header"><h3 class="card-title">Riwayat Handover</h3></div>
             <div class="card-body">
                 <div class="timeline">
                     @foreach($handoverLogs as $log)
                         <div class="time-label">
-                            <span class="bg-{{ $log->was_overdue ? 'danger' : 'info' }}">
+                            <span class="{{ $log->notes && str_contains($log->notes, 'REJECT') ? 'bg-danger' : 'bg-info' }}">
                                 {{ $log->handed_at->format('d M Y') }}
                             </span>
                         </div>
-                        
                         <div>
-                            <i class="fas fa-exchange-alt bg-blue"></i>
+                            <i class="fas {{ str_contains($log->notes, 'REJECT') ? 'fa-undo bg-danger' : 'fa-exchange-alt bg-blue' }}"></i>
                             <div class="timeline-item">
-                                <span class="time">
-                                    <i class="fas fa-clock"></i> {{ $log->handed_at->format('H:i') }}
-                                    @if($log->received_at)
-                                        - {{ $log->received_at->format('H:i') }}
-                                    @endif
-                                </span>
-                                <h3 class="timeline-header">
-                                    <strong>{{ $log->sender->name }}</strong> 
-                                    menyerahkan ke 
-                                    <strong>{{ $log->receiver->name ?? 'Belum diterima' }}</strong>
-                                </h3>
+                                <span class="time"><i class="fas fa-clock"></i> {{ $log->handed_at->format('H:i') }}</span>
+                                <h3 class="timeline-header"><strong>{{ $log->sender->name }}</strong> -> <strong>{{ $log->receiver->name ?? 'System' }}</strong></h3>
                                 <div class="timeline-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <strong>Dari:</strong> {{ ucfirst($log->from_status) }}<br>
-                                            <strong>Ke:</strong> {{ ucfirst($log->to_status) }}
-                                        </div>
-                                        <div class="col-md-6">
-                                            <strong>Durasi:</strong> {{ $log->duration_formatted }}<br>
-                                            @if($log->was_overdue)
-                                                <span class="badge bg-danger">Overdue</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    @if($log->notes)
-                                        <hr class="my-2">
-                                        <strong>Catatan:</strong> {{ $log->notes }}
-                                    @endif
+                                    <small class="text-muted">Dari: {{ ucfirst($log->from_status) }} | Ke: {{ ucfirst($log->to_status) }}</small>
+                                    @if($log->notes)<div class="mt-2 p-2 bg-white border-left border-info">{{ $log->notes }}</div>@endif
                                 </div>
                             </div>
                         </div>
                     @endforeach
-                    
-                    <div>
-                        <i class="fas fa-clock bg-gray"></i>
-                    </div>
+                    <div><i class="fas fa-clock bg-gray"></i></div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
-        <!-- Status Card -->
-        <div class="card card-primary">
-            <div class="card-header">
-                <h3 class="card-title">Status Saat Ini</h3>
-            </div>
+        {{-- Status Card --}}
+        <div class="card card-outline card-primary shadow">
             <div class="card-body">
-                <div class="text-center mb-3">
-                    {!! $cpb->status_badge !!}
+                <h5 class="text-center mb-3">Sisa Waktu Di Tahap Ini</h5>
+                <div class="text-center">
+                    <h2 class="{{ $cpb->time_remaining < 0 ? 'text-danger' : 'text-primary' }} font-weight-bold">
+                        {{ $cpb->time_remaining }} <small>jam</small>
+                    </h2>
+                    <p class="text-muted small">Batas: {{ $cpb->time_limit }} jam</p>
                 </div>
                 
-                <dl>
-                    <dt>Mulai Status Ini:</dt>
-                    <dd>{{ $cpb->entered_current_status_at->format('d/m/Y H:i') }}</dd>
-                    
-                    <dt>Durasi:</dt>
-                    <dd>{{ $cpb->duration_in_current_status }} jam</dd>
-                    
-                    <dt>Batas Waktu:</dt>
-                    <dd>{{ $cpb->time_limit }} jam</dd>
-                    
-                    <dt>Sisa Waktu:</dt>
-                    <dd>
-                        <span class="{{ $cpb->time_remaining < 0 ? 'text-danger' : '' }}">
-                            {{ $cpb->time_remaining }} jam
-                        </span>
-                    </dd>
-                </dl>
-                
-                @if($cpb->is_overdue && $cpb->overdue_since)
-                    <div class="alert alert-danger">
-                        <h6><i class="icon fas fa-exclamation-triangle"></i> OVERDUE!</h6>
-                        <p class="mb-0">
-                            CPB telah melebihi batas waktu sejak 
-                            {{ $cpb->overdue_since->format('d/m/Y H:i') }}
-                        </p>
-                    </div>
-                @endif
-            </div>
-        </div>
-        
-                @if($cpb->getPreviousDepartment() && Gate::allows('handover', $cpb))
-            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-reject">
-                <i class="fas fa-undo"></i> Kembalikan (Rework)
-            </button>
-        @endif
+                <hr>
 
-        <div class="modal fade" id="modal-reject">
-            <div class="modal-dialog">
-                <form action="{{ route('cpb.reject', $cpb) }}" method="POST">
-                    @csrf
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger">
-                            <h4 class="modal-title">Konfirmasi Rework</h4>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Apakah Anda yakin ingin mengembalikan Batch ini ke bagian <strong>{{ $cpb->getPreviousDepartment() }}</strong>?</p>
-                            <div class="form-group">
-                                <label>Alasan Pengembalian / Rework</label>
-                                <textarea name="rework_note" class="form-control" rows="3" required placeholder="Wajib mengisi alasan..."></textarea>
-                            </div>
-                        </div>
-                        <div class="modal-footer justify-content-between">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
-                            <button type="submit" class="btn btn-danger">Ya, Kembalikan</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Next Action Card -->
-        @if($nextDepartment && $canHandover)
-            <div class="card card-success">
-                <div class="card-header">
-                    <h3 class="card-title">Tindakan Selanjutnya</h3>
-                </div>
-                <div class="card-body">
-                    <p>Anda dapat menyerahkan CPB ini ke departemen berikutnya:</p>
-                    
-                    <div class="text-center mb-3">
-                        <div class="display-4">
-                            <i class="fas fa-arrow-right"></i>
-                        </div>
-                        <h4>{{ strtoupper($nextDepartment) }}</h4>
-                    </div>
-                    
-                    <a href="{{ route('handover.create', $cpb) }}" class="btn btn-success btn-block">
-                        <i class="fas fa-forward"></i> Serahkan ke {{ ucfirst($nextDepartment) }}
-                    </a>
-                </div>
-            </div>
-        @endif
-        
-        <!-- Quick Actions -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Quick Actions</h3>
-            </div>
-            <div class="card-body">
+                {{-- Tombol Tindakan --}}
                 <div class="btn-group-vertical w-100">
-                    <a href="{{ route('cpb.index') }}" class="btn btn-default">
-                        <i class="fas fa-list"></i> Kembali ke Daftar
-                    </a>
-                    @if($cpb->status == 'qa_final' && auth()->user()->role == 'qa')
-                        <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="w-100">
-                            @csrf
-                            <button type="submit" class="btn btn-danger w-100 text-left" 
-                                    onclick="return confirm('Release CPB ini?')">
-                                <i class="fas fa-check-circle"></i> Release CPB
-                            </button>
-                        </form>
+                    @if($cpb->getPreviousDepartment() && Gate::allows('handover', $cpb))
+                        <button type="button" class="btn btn-danger mb-2" data-toggle="modal" data-target="#modal-reject">
+                            <i class="fas fa-undo"></i> Kembalikan (Rework)
+                        </button>
                     @endif
-                    @if(auth()->user()->isSuperAdmin() || auth()->user()->isQA())
-                        <a href="{{ route('reports.audit', ['batch_number' => $cpb->batch_number]) }}" 
-                           class="btn btn-info">
-                            <i class="fas fa-history"></i> Lihat Audit Trail
+
+                    @if($nextDepartment && $isHandler)
+                        <a href="{{ route('handover.create', $cpb) }}" class="btn btn-success mb-2">
+                            <i class="fas fa-forward"></i> Serahkan ke {{ strtoupper($nextDepartment) }}
                         </a>
                     @endif
+                    
+                    <a href="{{ route('cpb.index') }}" class="btn btn-default"><i class="fas fa-list"></i> Daftar CPB</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-@endsection
 
-@push('styles')
-<style>
-.timeline {
-    position: relative;
-    padding: 0;
-    list-style: none;
-}
-.timeline:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: #dee2e6;
-    left: 31px;
-    margin: 0;
-    border-radius: 2px;
-}
-.timeline > li {
-    position: relative;
-    margin-bottom: 30px;
-    min-height: 50px;
-}
-.timeline > li:after {
-    content: "";
-    display: table;
-    clear: both;
-}
-.time-label {
-    position: relative;
-    display: block;
-    padding: 10px;
-    background: #e9ecef;
-    border-radius: 4px;
-    margin: 0 0 30px 0;
-}
-.time-label > span {
-    display: inline-block;
-    padding: 5px 10px;
-    color: white;
-    border-radius: 4px;
-}
-.timeline-item {
-    position: relative;
-    margin-left: 60px;
-    margin-right: 15px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-}
-.timeline-header {
-    margin: 0 0 10px 0;
-    font-size: 16px;
-    line-height: 1.1;
-}
-.timeline-body {
-    padding: 10px;
-}
-.timeline-time {
-    color: #999;
-    font-size: 12px;
-}
-.timeline > li > .fa {
-    position: absolute;
-    left: 23px;
-    top: 0;
-    width: 16px;
-    height: 16px;
-    color: #fff;
-    background: #6c757d;
-    border-radius: 50%;
-    text-align: center;
-    line-height: 16px;
-    font-size: 10px;
-}
-</style>
-@endpush
+{{-- Modal Reject --}}
+<div class="modal fade" id="modal-reject" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="{{ route('cpb.reject', $cpb) }}" method="POST">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h4 class="modal-title">Konfirmasi Rework</h4>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p>Batch akan dikembalikan ke: <strong>{{ strtoupper($cpb->getPreviousDepartment()) }}</strong></p>
+                    <div class="form-group">
+                        <label>Alasan Penolakan / Detail Perbaikan</label>
+                        <textarea name="rework_note" class="form-control" rows="3" required placeholder="Jelaskan apa yang harus diperbaiki..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger text-white">Ya, Kembalikan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection
 
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // Auto-refresh every 2 minutes
-    setInterval(function() {
-        window.location.reload();
-    }, 120000);
-});
+    $(document).ready(function () {
+        // Custom file input label update
+        $('.custom-file-input').on('change', function() {
+            let fileName = $(this).val().split('\\').pop();
+            $(this).next('.custom-file-label').addClass("selected").html(fileName);
+        });
+    });
 </script>
 @endpush
