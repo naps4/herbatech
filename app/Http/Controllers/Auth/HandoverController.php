@@ -149,4 +149,20 @@ class HandoverController extends Controller
         
         return view('handover.history', compact('cpb', 'handovers'));
     }
-}
+
+    public function rework(Request $request, CPB $cpb)
+    {
+        $request->validate([
+            'target_status' => 'required',
+            'reason' => 'required|string|min:10',
+        ]);
+
+        if (!auth()->user()->isQA() && !auth()->user()->isSuperAdmin()) {
+            return back()->with('error', 'Hanya QA yang dapat melakukan perintah rework.');
+        }
+
+        $cpb->rejectTo($request->target_status, $request->reason);
+
+        return redirect()->route('cpb.show', $cpb)->with('success', 'Batch berhasil dikembalikan untuk rework.');
+    }
+}   

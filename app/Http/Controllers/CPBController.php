@@ -269,6 +269,8 @@ class CPBController extends Controller
                 'entered_current_status_at' => now(),
                 'is_overdue' => false,
                 'overdue_since' => null,
+                'is_rework' => false, 
+                'rework_note' => null,
             ]);
             
             // Create handover log
@@ -402,32 +404,5 @@ class CPBController extends Controller
         }
 
         return back()->with('success', 'Permintaan telah dikirim ke QA Team.');
-    }
-
-    public function exportPdf(Request $request)
-    {
-        $user = auth()->user();
-        $query = CPB::query();
-
-        // Gunakan logika filter yang sama dengan method index agar data yang keluar sinkron
-        if ($request->get('status') === 'active') {
-            $query->where('status', '!=', 'released');
-        } elseif ($request->get('status') === 'released') {
-            $query->where('status', 'released');
-        }
-
-        if (!$user->isSuperAdmin() && !$user->isQA()) {
-            $query->where(function($q) use ($user) {
-                $q->where('status', $user->role)->orWhere('created_by', $user->id);
-            });
-        }
-
-        $cpbs = $query->get();
-
-        // Load view khusus untuk PDF
-        $pdf = Pdf::loadView('cpb.export-pdf', compact('cpbs'));
-        
-        // Download file
-        return $pdf->download('daftar-cpb-' . date('Y-m-d') . '.pdf');
     }
 }

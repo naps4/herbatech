@@ -254,5 +254,4 @@ public function export(Request $request)
     
     return view('reports.performance', compact('performance', 'userPerformance', 'summary'));
 }
-
 }

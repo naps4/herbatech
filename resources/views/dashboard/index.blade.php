@@ -138,11 +138,15 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <strong>{{ $cpb->batch_number }}</strong>
+                                        
+                                            @if($cpb->is_rework)
+                                                <span class="badge bg-orange ml-2" title="Alasan: {{ $cpb->rework_note }}">
+                                                    <i class="fas fa-undo-alt"></i> REWORK
+                                                </span>
+                                            @endif
+                                            
                                             @if($cpb->is_overdue)
                                                 <span class="badge bg-danger ml-2">OVERDUE</span>
-                                            @endif
-                                            @if($cpb->status === 'released')
-                                                <span class="badge bg-success ml-2">RELEASED</span>
                                             @endif
                                         </div>
                                         <small class="text-muted">
