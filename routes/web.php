@@ -12,6 +12,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Admin\UserController;
 
+
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -211,4 +213,9 @@ Route::get('/test-gate/{cpb}', function (CPB $cpb) {
 // Route fallback untuk handle 404
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
+});
+
+Route::middleware(['auth'])->group(function () {
+    // ... route lainnya ...
+    Route::get('/cpb/export-pdf', [CPBController::class, 'exportPdf'])->name('cpb.export-pdf');
 });
