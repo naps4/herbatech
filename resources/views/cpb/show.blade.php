@@ -245,7 +245,7 @@
                     </dd>
                 </dl>
                 
-                @if($cpb->is_overdue)
+                @if($cpb->is_overdue && $cpb->overdue_since)
                     <div class="alert alert-danger">
                         <h6><i class="icon fas fa-exclamation-triangle"></i> OVERDUE!</h6>
                         <p class="mb-0">
@@ -257,6 +257,39 @@
             </div>
         </div>
         
+                @if($cpb->getPreviousDepartment() && Gate::allows('handover', $cpb))
+            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-reject">
+                <i class="fas fa-undo"></i> Kembalikan (Rework)
+            </button>
+        @endif
+
+        <div class="modal fade" id="modal-reject">
+            <div class="modal-dialog">
+                <form action="{{ route('cpb.reject', $cpb) }}" method="POST">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger">
+                            <h4 class="modal-title">Konfirmasi Rework</h4>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Apakah Anda yakin ingin mengembalikan Batch ini ke bagian <strong>{{ $cpb->getPreviousDepartment() }}</strong>?</p>
+                            <div class="form-group">
+                                <label>Alasan Pengembalian / Rework</label>
+                                <textarea name="rework_note" class="form-control" rows="3" required placeholder="Wajib mengisi alasan..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer justify-content-between">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-danger">Ya, Kembalikan</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Next Action Card -->
         @if($nextDepartment && $canHandover)
             <div class="card card-success">

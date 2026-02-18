@@ -28,6 +28,9 @@ Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
+
+Route::post('/cpb/{cpb}/reject', [CPBController::class, 'reject'])->name('cpb.reject');
+
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
     // Dashboard

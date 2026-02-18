@@ -27,7 +27,9 @@ class CPB extends Model
         'current_department_id',
         'entered_current_status_at',
         'is_overdue',
-        'overdue_since'
+        'overdue_since',
+        'is_rework',
+        'rework_note'
     ];
 
     protected $casts = [
@@ -202,6 +204,21 @@ class CPB extends Model
         }
         
         return $this->is_overdue;
+    }
+        
+// app/Models/CPB.php
+
+    public function getPreviousDepartment()
+    {
+        // Urutan harus sama dengan alur kerja (flow) Anda
+        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa_final', 'released'];
+        $currentIndex = array_search($this->status, $flow);
+        
+        if ($currentIndex !== false && $currentIndex > 0) {
+            return $flow[$currentIndex - 1];
+        }
+        
+        return null;
     }
 
     public function canBeHandedOverBy(User $user)
