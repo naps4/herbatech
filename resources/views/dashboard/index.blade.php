@@ -35,10 +35,21 @@
                     @endcan
                     
                     <div class="col-lg-3 col-6">
-                        <a href="{{ route('cpb.index', ['overdue' => 'yes']) }}" class="btn btn-app bg-danger">
+ 
+                        <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'all']) }}" class="btn btn-app bg-danger">
                             <i class="fas fa-exclamation-triangle"></i> Overdue
                             @php
-                                $overdueCount = \App\Models\CPB::where('is_overdue', true)->count();
+                                // Perbaikan Badge: Agar angka badge sinkron dengan apa yang akan dilihat user
+                                $user = auth()->user();
+                                $overdueQuery = \App\Models\CPB::where('is_overdue', true);
+                                
+                                if (!$user->isSuperAdmin() && !$user->isQA()) {
+                                    $overdueQuery->where(function($q) use ($user) {
+                                        $q->where('status', $user->role)
+                                        ->orWhere('created_by', $user->id);
+                                    });
+                                }
+                                $overdueCount = $overdueQuery->count();
                             @endphp
                             @if($overdueCount > 0)
                                 <span class="badge bg-warning">{{ $overdueCount }}</span>
