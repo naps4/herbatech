@@ -3,13 +3,6 @@
 @section('title', 'Edit CPB')
 @section('page-title', 'Edit CPB: ' . $cpb->batch_number)
 
-@section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('cpb.index') }}">CPB</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('cpb.show', $cpb) }}">{{ $cpb->batch_number }}</a></li>
-    <li class="breadcrumb-item active">Edit</li>
-@endsection
-
 @section('content')
 <div class="row">
     <div class="col-md-8">

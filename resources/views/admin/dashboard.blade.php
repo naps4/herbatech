@@ -1,11 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'Admin Dashboard')
-@section('page-title', 'Admin Dashboard')
+@section('title',)
+@section('page-title', )
 
-@section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item active">Admin</li>
 @endsection
 
 @section('content')
