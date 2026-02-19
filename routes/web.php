@@ -35,7 +35,7 @@ Route::post('/cpb/{cpb}/reject', [CPBController::class, 'reject'])->name('cpb.re
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
-    // Dashboard
+    Route::get('/api/cpb/last-number', [App\Http\Controllers\CPBController::class, 'getLastNumber'])->name('cpb.last-number');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/home', function () {
         return redirect()->route('dashboard');
@@ -49,6 +49,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::post('/clear', [NotificationController::class, 'clear'])->name('clear');
     });
+
+    // API Routes for Number Created
+    Route::get('/cpb/last-number', [App\Http\Controllers\CPBController::class, 'getLastNumber']);
     
    // CPB Routes
     Route::prefix('cpb')->name('cpb.')->group(function () {
@@ -58,7 +61,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cpb}', [CPBController::class, 'show'])->name('show');
         Route::get('/{cpb}/edit', [CPBController::class, 'edit'])->name('edit');
         Route::put('/{cpb}', [CPBController::class, 'update'])->name('update');
-        Route::delete('/{cpb}', [CPBController::class, 'destroy'])->name('destroy');
+        Route::delete('/cpb/{cpb}/attachment/{attachment}', [App\Http\Controllers\CPBController::class, 'destroyAttachment'])
+                ->name('cpb.attachment.destroy');
         
         // Handover routes
         Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handoverForm');

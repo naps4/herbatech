@@ -20,12 +20,12 @@ class CPBController extends Controller
     {
         $this->middleware('auth');
     }
-    
+
     public function index(Request $request)
     {
         $user = auth()->user();
         $query = CPB::query();
-        $cpbs = $query->latest()->paginate(7); 
+        $cpbs = $query->latest()->paginate(7);
         return view('cpb.index', compact('cpbs'));
 
         if ($request->get('status') === 'active') {
@@ -36,7 +36,7 @@ class CPBController extends Controller
         } else {
             $query->where('status', '!=', 'released');
         }
-        
+
         // Filters lainnya
         if ($request->has('type') && $request->type != 'all') {
             $query->where('type', $request->type);
@@ -48,53 +48,35 @@ class CPBController extends Controller
 
         if ($request->get('rework') === 'true') {
         $query->where('is_rework', true);
-        
-        //Role-based filtering
-        if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
-            $query->where(function($q) use ($user) {
-                $q->where('current_department_id', $user->id)
-                ->orWhere('created_by', $user->id)
-                ->orWhere('status', 'released');
-            });
-        
-        }
-
-        //Paginate dan Return HANYA DI AKHIR
-        $cpbs = $query->orderBy('is_overdue', 'desc')
-                        ->orderBy('entered_current_status_at', 'asc')
-                        ->paginate(10) // Sesuaikan jumlah per halaman
-                        ->withQueryString();
-            
-        return view('cpb.index', compact('cpbs'));
     }
         
         if ($request->has('batch_number')) {
             $query->where('batch_number', 'like', '%' . $request->batch_number . '%');
         }
-        
+
         // Role-based filtering (Tetap gunakan perbaikan role sebelumnya)
         if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
-        $query->where(function($q) use ($user) {
-            $q->where('current_department_id', $user->id)
-              ->orWhere('created_by', $user->id)
-              ->orWhere('status', 'released');
-              
-            if ($user->role === 'ppic') {
-                $q->orWhere('status', 'qa');
-            }
-        });
-    }
-   
+            $query->where(function ($q) use ($user) {
+                $q->where('current_department_id', $user->id)
+                    ->orWhere('created_by', $user->id)
+                    ->orWhere('status', 'released');
+
+                if ($user->role === 'ppic') {
+                    $q->orWhere('status', 'qa');
+                }
+            });
+        }
+
         // Overdue filter
         if ($request->has('overdue') && $request->overdue == 'true') {
             $query->where('is_overdue', true);
         }
-        
+
         $cpbs = $query->orderBy('is_overdue', 'desc')
-                      ->orderBy('entered_current_status_at', 'asc')
-                      ->paginate(20)
-                      ->withQueryString();
-        
+            ->orderBy('entered_current_status_at', 'asc')
+            ->paginate(20)
+            ->withQueryString();
+
         return view('cpb.index', compact('cpbs'));
     }
 
@@ -117,12 +99,23 @@ class CPBController extends Controller
             'rework_note' => 'required|string|max:1000',
         ]);
 
+        $previousStatus = $cpb->getPreviousDepartment(); 
+        
+        // Cari log terakhir di mana dokumen dikirim KE departemen saat ini
+        $lastTransfer = $cpb->handoverLogs()
+            ->where('to_status', $cpb->status)
+            ->latest()
+            ->first();
+
+        // Kembalikan ke pengirim (handed_by)
+        $receiverId = $lastTransfer ? $lastTransfer->handed_by : User::where('role', $previousStatus)->first()->id;
+
         DB::beginTransaction();
         try {
             $oldStatus = $cpb->status;
             $cpb->update([
                 'status' => $previousStatus,
-                'current_department_id' => $receiverId, 
+                'current_department_id' => $receiverId,
                 'is_rework' => true,
                 'rework_note' => $request->rework_note,
                 'entered_current_status_at' => now(),
@@ -148,33 +141,60 @@ class CPBController extends Controller
         }
     }
 
+
     public function create()
     {
         // Cek apakah user bisa create CPB
         if (!Gate::allows('create', CPB::class)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         return view('cpb.create');
     }
-    
+
+    public function getLastNumber(Request $request)
+    {
+        $type = $request->query('type');
+        $year = now()->year;
+        $typeCode = ($type === 'pengolahan') ? 'P' : 'K';
+
+        // Pola yang dicari: CPB-2026-P... atau CPB-2026-K...
+        $prefix = "CPB-{$year}-{$typeCode}";
+
+        // Cari batch_number TERBESAR yang mengandung prefix tersebut
+        $lastBatch = \App\Models\CPB::where('batch_number', 'LIKE', $prefix . '%')
+            ->orderBy('batch_number', 'desc')
+            ->first();
+
+        $lastNumber = 0;
+        if ($lastBatch) {
+            // Ambil 3 digit terakhir dari string batch_number
+            // Contoh: CPB-2026-P005 -> substr(..., -3) menghasilkan "005"
+            $lastNumber = (int) substr($lastBatch->batch_number, -3);
+        }
+
+        return response()->json([
+            'last_number' => $lastNumber
+        ]);
+    }
+
     public function store(Request $request)
     {
         // Cek apakah user bisa create CPB
         if (!Gate::allows('create', CPB::class)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $validated = $request->validate([
-            'batch_number' => 'required|unique:cpbs|max:50',
+            'batch_number' => 'required|unique:cpbs,batch_number|max:50',
             'type' => 'required|in:pengolahan,pengemasan',
             'product_name' => 'required|max:100',
             'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Limit 20MB
             'description' => 'nullable|string|max:255',
         ]);
-        
+
         DB::beginTransaction();
-        
+
         try {
             $cpb = CPB::create([
                 'batch_number' => $validated['batch_number'],
@@ -192,13 +212,13 @@ class CPBController extends Controller
                 $file = $request->file('file');
                 $fileName = $file->getClientOriginalName();
                 $fileType = $file->getClientOriginalExtension();
-                
+
                 $path = $file->storeAs(
                     'attachments/' . $cpb->id,
                     time() . '_' . $fileName,
                     'public'
                 );
-        
+
                 $cpb->attachments()->create([
                     'uploaded_by' => auth()->id(),
                     'file_path' => $path,
@@ -207,7 +227,7 @@ class CPBController extends Controller
                     'description' => 'Dokumen Awal CPB'
                 ]);
             }
-            
+
             // Create initial handover log
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
@@ -217,21 +237,20 @@ class CPBController extends Controller
                 'handed_at' => now(),
                 'notes' => 'CPB dibuat'
             ]);
-            
+
             // Trigger event
             event(new CPBCreated($cpb));
-            
+
             DB::commit();
-            
+
             return redirect()->route('cpb.show', $cpb)
-                        ->with('success', 'CPB berhasil dibuat.');
-            
+                ->with('success', 'CPB berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal membuat CPB: ' . $e->getMessage());
         }
     }
-    
+
     public function show(CPB $cpb)
     {
         // Debug information
@@ -245,20 +264,20 @@ class CPBController extends Controller
             'cpb_created_by' => $cpb->created_by,
             'cpb_current_dept' => $cpb->current_department_id,
         ]);
-        
+
         // Temporary: Allow all for testing
         // if (!Gate::allows('view', $cpb)) {
         //     abort(403, 'Unauthorized action.');
         // }
-        
+
         $handoverLogs = $cpb->handoverLogs()
-                           ->with(['sender', 'receiver'])
-                           ->orderBy('created_at', 'desc')
-                           ->get();
-        
+            ->with(['sender', 'receiver'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         $nextDepartment = $cpb->getNextDepartment();
         $canHandover = Gate::allows('handover', $cpb); // Temporary
-        
+
         return view('cpb.show', compact('cpb', 'handoverLogs', 'nextDepartment', 'canHandover'));
     }
 
@@ -268,45 +287,45 @@ class CPBController extends Controller
         if (!Gate::allows('update', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         return view('cpb.edit', compact('cpb'));
     }
-    
+
     public function update(Request $request, CPB $cpb)
     {
         // Gunakan Gate untuk check permission
         if (!Gate::allows('update', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $validated = $request->validate([
             'product_name' => 'required|max:100',
         ]);
-        
+
         $cpb->update($validated);
-        
+
         return redirect()->route('cpb.show', $cpb)
-                       ->with('success', 'CPB berhasil diperbarui.');
+            ->with('success', 'CPB berhasil diperbarui.');
     }
-    
+
     public function handoverForm(CPB $cpb)
     {
         // Gunakan Gate untuk check permission
         if (!Gate::allows('handover', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $nextStatus = $cpb->getNextDepartment();
-        
+
         if (!$nextStatus) {
             return back()->with('error', 'Tidak dapat melakukan handover. CPB sudah di status akhir.');
         }
-        
+
         $nextUsers = User::where('role', $nextStatus)->get();
-        
+
         return view('cpb.handover', compact('cpb', 'nextStatus', 'nextUsers'));
     }
-    
+
     public function handover(Request $request, CPB $cpb)
     {
         if (!Gate::allows('handover', $cpb)) {
@@ -324,20 +343,18 @@ class CPBController extends Controller
             'receiver_id' => 'required|exists:users,id',
             'notes' => 'nullable|string|max:500',
         ]);
-
-        // HITUNG DURASI DISINI (Agar tidak undefined)
-        $enteredAt = $cpb->entered_current_status_at;
-        $durationInMinutes = $enteredAt ? $enteredAt->diffInMinutes(now()) : 0;
-        $durationInHours = round($durationInMinutes / 60, 2);
-
+        
         DB::beginTransaction();
+        
         try {
             $receiver = User::findOrFail($request->receiver_id);
             
+            // Verify receiver is in correct department
             if ($receiver->role !== $nextStatus) {
                 throw new \Exception('Penerima tidak berada di departemen yang benar.');
             }
-
+            
+            // Update CPB status
             $oldStatus = $cpb->status;
             $cpb->update([
                 'status' => $nextStatus,
@@ -345,10 +362,11 @@ class CPBController extends Controller
                 'entered_current_status_at' => now(),
                 'is_overdue' => false,
                 'overdue_since' => null,
-                'is_rework' => false, 
+                'is_rework' => false,
                 'rework_note' => null,
             ]);
             
+            // Create handover log
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
                 'from_status' => $oldStatus,
@@ -359,26 +377,30 @@ class CPBController extends Controller
                 'was_overdue' => $cpb->is_overdue,
                 'notes' => $request->notes,
             ]);
-
+            
+            // Trigger event
             event(new CPBHandover($cpb, $user, $receiver));
+            
             DB::commit();
             
-            return redirect()->route('dashboard')->with('success', 'CPB berhasil diserahkan.');
+            return redirect()->route('dashboard')
+                           ->with('success', 'CPB berhasil diserahkan ke ' . $nextStatus);
+            
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal melakukan handover: ' . $e->getMessage());
         }
     }
-    
+
     public function release(CPB $cpb)
     {
         // Gunakan Gate untuk check permission
         if (!Gate::allows('release', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         DB::beginTransaction();
-        
+
         try {
             $oldStatus = $cpb->status;
             $cpb->update([
@@ -386,8 +408,7 @@ class CPBController extends Controller
                 'entered_current_status_at' => now(),
                 'is_overdue' => false,
             ]);
-
-                        
+            
             // Create handover log for release
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
@@ -397,68 +418,67 @@ class CPBController extends Controller
                 'handed_at' => now(),
                 'notes' => 'CPB telah direlease',
             ]);
-            
+
             DB::commit();
-            
+
             return redirect()->route('cpb.show', $cpb)
-                           ->with('success', 'CPB berhasil direlease.');
-            
+                ->with('success', 'CPB berhasil direlease.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal me-release CPB: ' . $e->getMessage());
         }
     }
-    
+
     public function destroy(CPB $cpb)
     {
         // Gunakan Gate untuk check permission
         if (!Gate::allows('delete', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $cpb->delete();
-        
+
         return redirect()->route('cpb.index')
-                       ->with('success', 'CPB berhasil dihapus.');
+            ->with('success', 'CPB berhasil dihapus.');
     }
 
-public function uploadAttachment(Request $request, CPB $cpb)
-{
-    $user = auth()->user();
-    
-    if ($user->role !== $cpb->status && !$user->isSuperAdmin()) {
-        return back()->with('error', 'Hanya bagian ' . strtoupper($cpb->status) . ' yang diizinkan mengunggah dokumen di tahap ini.');
-    }
+    public function uploadAttachment(Request $request, CPB $cpb)
+    {
+        $user = auth()->user();
 
-    $request->validate([
-        'file' => 'required|file|max:10240', // Max 10MB
-        'description' => 'nullable|string|max:255',
-    ]);
+        if ($user->role !== $cpb->status && !$user->isSuperAdmin()) {
+            return back()->with('error', 'Hanya bagian ' . strtoupper($cpb->status) . ' yang diizinkan mengunggah dokumen di tahap ini.');
+        }
 
-    try {
-        $file = $request->file('file');
-        $fileName = $file->getClientOriginalName();
-        $fileType = $file->getClientOriginalExtension();
-        
-        $path = $file->storeAs(
-            'attachments/' . $cpb->id,
-            time() . '_' . $fileName,
-            'public'
-        );
-
-        $cpb->attachments()->create([
-            'uploaded_by' => $user->id,
-            'file_path' => $path,
-            'file_name' => $fileName,
-            'file_type' => $fileType,
-            'description' => $request->description
+        $request->validate([
+            'file' => 'required|file|max:10240', // Max 10MB
+            'description' => 'nullable|string|max:255',
         ]);
 
-        return back()->with('success', 'File berhasil diunggah.');
-    } catch (\Exception $e) {
-        return back()->with('error', 'Gagal mengunggah file: ' . $e->getMessage());
+        try {
+            $file = $request->file('file');
+            $fileName = $file->getClientOriginalName();
+            $fileType = $file->getClientOriginalExtension();
+
+            $path = $file->storeAs(
+                'attachments/' . $cpb->id,
+                time() . '_' . $fileName,
+                'public'
+            );
+
+            $cpb->attachments()->create([
+                'uploaded_by' => $user->id,
+                'file_path' => $path,
+                'file_name' => $fileName,
+                'file_type' => $fileType,
+                'description' => $request->description
+            ]);
+
+            return back()->with('success', 'File berhasil diunggah.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengunggah file: ' . $e->getMessage());
+        }
     }
-}
 
     public function requestToQA(CPB $cpb)
     {
@@ -474,7 +494,7 @@ public function uploadAttachment(Request $request, CPB $cpb)
 
         // Cari user QA
         $qaUsers = User::where('role', 'qa')->get();
-        
+
         // Kirim notifikasi ke semua QA
         foreach ($qaUsers as $user) {
             Notification::create([

@@ -1,7 +1,12 @@
 @extends('layouts.app')
 
+@section('title', 'Buat CPB Baru')
+@section('page-title', 'Buat CPB Baru')
 
-@section('page-title')
+@section('breadcrumb')
+    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('cpb.index') }}">CPB</a></li>
+    <li class="breadcrumb-item active">Buat Baru</li>
 @endsection
 
 @section('content')
@@ -66,85 +71,79 @@
                                 <i class="fas fa-paperclip mr-1"></i> Dokumen Pendukung
                             </h6>
                             <div class="form-group">
-                                <label for="fileInput">Upload Dokumen Awal (PDF/IMG) <span class="text-danger">*</span></label>
-                                <div class="custom-file">
-                                    <input type="file" class="custom-file-input @error('file') is-invalid @enderror" 
-                                           id="fileInput" name="file" required onchange="handleFileSelect(this)">
-                                    <label class="custom-file-label" for="fileInput">Pilih berkas...</label>
-                                </div>
-                                
-                                <div id="fileInfoPreview" class="mt-3 d-none">
-                                    <div class="alert alert-secondary d-flex align-items-center mb-0 py-2 border-dark">
-                                        <div class="mr-3">
-                                            <i class="fas fa-file-alt fa-2x text-dark"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <p id="previewName" class="mb-0 font-weight-bold text-dark small"></p>
-                                            <p id="previewSize" class="mb-0 text-muted small"></p>
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-outline-danger ml-2" onclick="resetFileSelection()">
-                                            <i class="fas fa-times"></i> Hapus
-                                        </button>
-                                    </div>
-                                </div>
-
-                                @error('file')
-                                    <span class="text-danger small d-block mt-1"><strong>{{ $message }}</strong></span>
+                                <label for="product_name">Nama Produk *</label>
+                                <input type="text" class="form-control @error('product_name') is-invalid @enderror" 
+                                       id="product_name" name="product_name" value="{{ old('product_name') }}" 
+                                       placeholder="Nama produk" required>
+                                @error('product_name')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
                                 @enderror
                             </div>
                         </div>
+                    </div>
 
-                        <div class="callout callout-info mb-0">
-                            <div class="row">
-                                <div class="col-sm-4">
-                                    <p class="text-muted mb-0 small text-uppercase font-weight-bold">Pendaftar</p>
-                                    <p class="mb-0">{{ auth()->user()->name }}</p>
-                                </div>
-                                <div class="col-sm-4 border-left">
-                                    <p class="text-muted mb-0 small text-uppercase font-weight-bold">Departemen</p>
-                                    <p class="mb-0">{{ auth()->user()->department ?? 'R&D' }}</p>
-                                </div>
-                                <div class="col-sm-4 border-left">
-                                    <p class="text-muted mb-0 small text-uppercase font-weight-bold">Waktu Server</p>
-                                    <p class="mb-0">{{ now()->format('d M Y, H:i') }} WIB</p>
-                                </div>
+                    <div class="form-group">
+                        <label for="attachment">Lampiran Dokumen *</label>
+                        <div class="input-group">
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input @error('file') is-invalid @enderror" 
+                                       id="file" name="file" required>
+                                <label class="custom-file-label" for="file">Pilih file...</label>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="card-footer bg-white text-right">
-                        <button type="submit" class="btn btn-dark px-4 shadow-sm">
-                            <i class="fas fa-save mr-1"></i> Daftarkan CPB
-                        </button>
-                        <a href="{{ route('cpb.index') }}" class="btn btn-link text-muted">
-                            Batal
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white">
-                    <h3 class="card-title small-caps"><i class="fas fa-project-diagram mr-2"></i> Visualisasi Alur</h3>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush small">
-                        <div class="list-group-item list-group-item-action bg-light font-weight-bold">
-                            <i class="fas fa-circle text-primary mr-2"></i> 1. RND (Tahap Sekarang)
+                    <div class="form-group">
+                        <label>Informasi Pembuat</label>
+                        <div class="form-control" style="background-color: #f8f9fa;">
+                            <strong>Pembuat:</strong> {{ auth()->user()->name }}<br>
+                            <strong>Departemen:</strong> {{ auth()->user()->department }}<br>
+                            <strong>Tanggal:</strong> {{ now()->format('d/m/Y H:i') }}
                         </div>
-                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 2. QA Review</div>
-                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 3. PPIC</div>
-                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 4. Prod & WH</div>
-                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 5. QA Final</div>
                     </div>
                 </div>
+                
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Simpan CPB
+                    </button>
+                    <a href="{{ route('cpb.index') }}" class="btn btn-default">
+                        <i class="fas fa-times"></i> Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Informasi</h3>
             </div>
-
-            <div class="alert alert-warning border-0 shadow-sm mt-3">
-                <h6 class="font-weight-bold"><i class="icon fas fa-exclamation-triangle"></i> Penting!</h6>
-                <p class="small mb-0">Sistem menggunakan penghitungan waktu <strong>Real-time</strong> sejak batch didaftarkan.</p>
+            <div class="card-body">
+                <h5>Alur CPB:</h5>
+                <ol class="pl-3">
+                    <li><strong>RND</strong> - Pembuatan CPB (Real-time)</li>
+                    <li><strong>QA</strong> - Review awal (Real-time)</li>
+                    <li><strong>PPIC</strong> - Perencanaan (Real-time)</li>
+                    <li><strong>Warehouse</strong> - Penyiapan bahan (Real-time)</li>
+                    <li><strong>Produksi</strong> - Proses produksi (Real-time)</li>
+                    <li><strong>QC</strong> - Quality control (Real-time)</li>
+                    <li><strong>QA Final</strong> - Final approval (Real-time)</li>
+                    <li><strong>Released</strong> - CPB selesai</li>
+                </ol>
+                
+                <div class="alert alert-info mt-3">
+                    <h6><i class="icon fas fa-info-circle"></i> Catatan:</h6>
+                    <ul class="mb-0 pl-3">
+                        <li>CPB akan otomatis masuk ke antrian QA setelah disimpan</li>
+                        <li>Notifikasi akan dikirim ke departemen QA</li>
+                        <li>Waktu dihitung secara <strong>Real-time</strong> sejak masuk departemen</li>
+                        <li>Tidak ada batasan waktu (Unlimited)</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -154,60 +153,23 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Auto-generate batch number
+    // Auto-generate batch number suggestion
     $('#type').change(function() {
-        if (!$(this).val()) {
-            $('#batch_number').val('');
-            return;
-        }
-        const type = $(this).val();
+        if (!$(this).val()) return;
+        
         const year = new Date().getFullYear();
-        $('#batch_number').attr('placeholder', 'Mengambil nomor...');
-
-        $.get('/api/cpb/last-number?type=' + type, function(data) {
-            const lastNum = data.last_number || 0;
-            const nextNumber = lastNum + 1;
-            const typeCode = type === 'pengolahan' ? 'P' : 'K';
-            $('#batch_number').val(`CPB-${year}-${typeCode}${nextNumber.toString().padStart(3, '0')}`);
+        const typeCode = $(this).val() === 'pengolahan' ? 'P' : 'K';
+        
+        $.get('/api/cpb/last-number?type=' + $(this).val(), function(data) {
+            const nextNumber = data.last_number + 1;
+            const batchNumber = `CPB-${year}-${typeCode}${nextNumber.toString().padStart(3, '0')}`;
+            
+            $('#batch_number').val(batchNumber);
         }).fail(function() {
-            const typeCode = type === 'pengolahan' ? 'P' : 'K';
-            $('#batch_number').val(`CPB-${year}-${typeCode}001`);
+            const batchNumber = `CPB-${year}-${typeCode}001`;
+            $('#batch_number').val(batchNumber);
         });
     });
-
-    // Prevent Double Submit
-    $('#formCreateCPB').on('submit', function() {
-        $(this).find('button[type="submit"]').attr('disabled', 'disabled')
-               .html('<i class="fas fa-spinner fa-spin mr-1"></i> Memproses...');
-    });
 });
-
-function handleFileSelect(input) {
-    const previewContainer = document.getElementById('fileInfoPreview');
-    const nameLabel = document.getElementById('previewName');
-    const sizeLabel = document.getElementById('previewSize');
-    const inputLabel = document.querySelector('.custom-file-label');
-
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        nameLabel.textContent = file.name;
-        inputLabel.textContent = file.name;
-        
-        const fileSize = (file.size / 1024).toFixed(2);
-        sizeLabel.textContent = fileSize > 1024 ? (fileSize / 1024).toFixed(2) + ' MB' : fileSize + ' KB';
-        previewContainer.classList.remove('d-none');
-    } else {
-        resetFileSelection();
-    }
-}
-
-function resetFileSelection() {
-    const fileInput = document.getElementById('fileInput');
-    const previewContainer = document.getElementById('fileInfoPreview');
-    const inputLabel = document.querySelector('.custom-file-label');
-    fileInput.value = "";
-    inputLabel.textContent = "Pilih berkas...";
-    previewContainer.classList.add('d-none');
-}
 </script>
 @endpush
