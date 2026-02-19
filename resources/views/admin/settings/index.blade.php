@@ -1,12 +1,10 @@
 @extends('layouts.app')
 
 @section('title', 'Site Settings')
-@section('page-title', 'Pengaturan Website')
+@section('page-title', '')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Admin</a></li>
-    <li class="breadcrumb-item active">Settings</li>
+
 @endsection
 
 @section('content')

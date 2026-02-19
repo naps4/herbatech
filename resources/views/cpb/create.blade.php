@@ -1,141 +1,155 @@
 @extends('layouts.app')
 
-@section('title', 'Buat CPB Baru')
-@section('page-title', 'Buat CPB Baru')
+@section('page-title')
+    <div class="d-flex align-items-center">
+@endsection
 
 @section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('cpb.index') }}">CPB</a></li>
-    <li class="breadcrumb-item active">Buat Baru</li>
 @endsection
 
 @section('content')
-<div class="row">
-    <div class="col-md-8">
-        <div class="card card-primary">
-            <div class="card-header">
-                <h3 class="card-title">Form CPB Baru</h3>
-            </div>
-            
-            <form method="POST" action="{{ route('cpb.store') }}" enctype="multipart/form-data">
-                @csrf
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card card-outline card-dark shadow-sm">
+                <div class="card-header bg-white">
+                    <h3 class="card-title text-dark font-weight-bold">
+                        <i class="fas fa-file-medical mr-1 text-dark"></i> Form Input CPB Baru
+                    </h3>
+                </div>
                 
-                <div class="card-body">
-                    <div class="form-group">
-                        <label for="batch_number">Nomor Batch *</label>
-                        <input type="text" class="form-control @error('batch_number') is-invalid @enderror" 
-                               id="batch_number" name="batch_number" value="{{ old('batch_number') }}" 
-                               placeholder="Contoh: CPB-2024-001" required>
-                        @error('batch_number')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                        <small class="form-text text-muted">Format: CPB-TAHUN-URUTAN</small>
-                    </div>
+                <form method="POST" action="{{ route('cpb.store') }}" enctype="multipart/form-data" id="formCreateCPB">
+                    @csrf
                     
-                    <div class="row">
-                        <div class="col-md-6">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <h6 class="text-dark border-bottom pb-2 mb-3 font-weight-bold">
+                                <i class="fas fa-barcode mr-1"></i> Identitas Batch
+                            </h6>
                             <div class="form-group">
-                                <label for="type">Jenis CPB *</label>
-                                <select class="form-control @error('type') is-invalid @enderror" 
-                                        id="type" name="type" required>
-                                    <option value="">Pilih Jenis</option>
-                                    <option value="pengolahan" {{ old('type') == 'pengolahan' ? 'selected' : '' }}>
-                                        Pengolahan
-                                    </option>
-                                    <option value="pengemasan" {{ old('type') == 'pengemasan' ? 'selected' : '' }}>
-                                        Pengemasan
-                                    </option>
-                                </select>
-                                @error('type')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
+                                <label for="batch_number">Nomor Batch <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-dark text-white"><i class="fas fa-tag"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control @error('batch_number') is-invalid @enderror" 
+                                           id="batch_number" name="batch_number" value="{{ old('batch_number') }}" 
+                                           placeholder="Otomatis terisi setelah pilih jenis" required readonly>
+                                </div>
+                                @error('batch_number')
+                                    <span class="text-danger small"><strong>{{ $message }}</strong></span>
                                 @enderror
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="product_name">Nama Produk *</label>
-                                <input type="text" class="form-control @error('product_name') is-invalid @enderror" 
-                                       id="product_name" name="product_name" value="{{ old('product_name') }}" 
-                                       placeholder="Nama produk" required>
-                                @error('product_name')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="type">Jenis CPB <span class="text-danger">*</span></label>
+                                        <select class="form-control select2bs4 @error('type') is-invalid @enderror" 
+                                                id="type" name="type" required>
+                                            <option value="">-- Pilih Jenis --</option>
+                                            <option value="pengolahan" {{ old('type') == 'pengolahan' ? 'selected' : '' }}>Pengolahan</option>
+                                            <option value="pengemasan" {{ old('type') == 'pengemasan' ? 'selected' : '' }}>Pengemasan</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="product_name">Nama Produk <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control @error('product_name') is-invalid @enderror" 
+                                               id="product_name" name="product_name" value="{{ old('product_name') }}" 
+                                               placeholder="Masukkan nama lengkap produk" required>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="attachment">Lampiran Dokumen *</label>
-                        <div class="input-group">
-                            <div class="custom-file">
-                                <input type="file" class="custom-file-input @error('file') is-invalid @enderror" 
-                                       id="file" name="file" required>
-                                <label class="custom-file-label" for="file">Pilih file...</label>
+                        <div class="mb-4">
+                            <h6 class="text-dark border-bottom pb-2 mb-3 font-weight-bold">
+                                <i class="fas fa-paperclip mr-1"></i> Dokumen Pendukung
+                            </h6>
+                            <div class="form-group">
+                                <label for="fileInput">Upload Dokumen Awal (PDF/IMG) <span class="text-danger">*</span></label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input @error('file') is-invalid @enderror" 
+                                           id="fileInput" name="file" required onchange="handleFileSelect(this)">
+                                    <label class="custom-file-label" for="fileInput">Pilih berkas...</label>
+                                </div>
+                                
+                                <div id="fileInfoPreview" class="mt-3 d-none">
+                                    <div class="alert bg-white d-flex align-items-center mb-0 py-2 shadow-sm border" style="border-color: #343a40 !important; border-left: 4px solid #343a40 !important;">
+                                        <div class="mr-3 text-dark">
+                                            <i class="fas fa-file-pdf fa-2x"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <p id="previewName" class="mb-0 font-weight-bold text-dark small text-truncate" style="max-width: 250px;"></p>
+                                            <p id="previewSize" class="mb-0 text-muted small"></p>
+                                        </div>
+                                        <div class="ml-auto">
+                                            <button type="button" class="btn btn-xs btn-outline-danger border-0" onclick="resetFileSelection()" title="Hapus file">
+                                                <i class="fas fa-times-circle"></i> Hapus
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @error('file')
+                                    <span class="text-danger small d-block mt-1"><strong>{{ $message }}</strong></span>
+                                @enderror
                             </div>
                         </div>
-                        @error('file')
-                            <span class="text-danger small mt-1">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                        <small class="form-text text-muted">Wajib upload dokumen awal (Max: 10MB)</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Informasi Pembuat</label>
-                        <div class="form-control" style="background-color: #f8f9fa;">
-                            <strong>Pembuat:</strong> {{ auth()->user()->name }}<br>
-                            <strong>Departemen:</strong> {{ auth()->user()->department }}<br>
-                            <strong>Tanggal:</strong> {{ now()->format('d/m/Y H:i') }}
+
+                        <div class="callout callout-info mb-0">
+                            <div class="row">
+                                <div class="col-sm-4">
+                                    <p class="text-muted mb-0 small text-uppercase font-weight-bold">Pendaftar</p>
+                                    <p class="mb-0 font-weight-bold">{{ auth()->user()->name }}</p>
+                                </div>
+                                <div class="col-sm-4 border-left">
+                                    <p class="text-muted mb-0 small text-uppercase font-weight-bold">Departemen</p>
+                                    <p class="mb-0 font-weight-bold">{{ auth()->user()->department ?? 'R&D' }}</p>
+                                </div>
+                                <div class="col-sm-4 border-left">
+                                    <p class="text-muted mb-0 small text-uppercase font-weight-bold">Waktu Server</p>
+                                    <p class="mb-0 font-weight-bold">{{ now()->format('d M Y, H:i') }} WIB</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Simpan CPB
-                    </button>
-                    <a href="{{ route('cpb.index') }}" class="btn btn-default">
-                        <i class="fas fa-times"></i> Batal
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Informasi</h3>
+                    
+                    <div class="card-footer bg-white text-right">
+                        <button type="submit" class="btn btn-dark px-4 shadow-sm">
+                            <i class="fas fa-save mr-1"></i> Daftarkan CPB
+                        </button>
+                        <a href="{{ route('cpb.index') }}" class="btn btn-link text-muted">
+                            Batal
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="card-body">
-                <h5>Alur CPB:</h5>
-                <ol class="pl-3">
-                    <li><strong>RND</strong> - Pembuatan CPB (Real-time)</li>
-                    <li><strong>QA</strong> - Review awal (Real-time)</li>
-                    <li><strong>PPIC</strong> - Perencanaan (Real-time)</li>
-                    <li><strong>Warehouse</strong> - Penyiapan bahan (Real-time)</li>
-                    <li><strong>Produksi</strong> - Proses produksi (Real-time)</li>
-                    <li><strong>QC</strong> - Quality control (Real-time)</li>
-                    <li><strong>QA Final</strong> - Final approval (Real-time)</li>
-                    <li><strong>Released</strong> - CPB selesai</li>
-                </ol>
-                
-                <div class="alert alert-info mt-3">
-                    <h6><i class="icon fas fa-info-circle"></i> Catatan:</h6>
-                    <ul class="mb-0 pl-3">
-                        <li>CPB akan otomatis masuk ke antrian QA setelah disimpan</li>
-                        <li>Notifikasi akan dikirim ke departemen QA</li>
-                        <li>Waktu dihitung secara <strong>Real-time</strong> sejak masuk departemen</li>
-                        <li>Tidak ada batasan waktu (Unlimited)</li>
-                    </ul>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">
+                    <h3 class="card-title small-caps font-weight-bold"><i class="fas fa-project-diagram mr-2"></i> Visualisasi Alur</h3>
                 </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush small">
+                        <div class="list-group-item list-group-item-action bg-light font-weight-bold">
+                            <i class="fas fa-circle text-primary mr-2"></i> 1. RND (Tahap Sekarang)
+                        </div>
+                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 2. QA Review</div>
+                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 3. PPIC</div>
+                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 4. Prod & WH</div>
+                        <div class="list-group-item"><i class="fas fa-arrow-right text-muted mr-2"></i> 5. QA Final</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning border-0 shadow-sm mt-3">
+                <h6 class="font-weight-bold text-dark"><i class="icon fas fa-exclamation-triangle"></i> Penting!</h6>
+                <p class="small mb-0 text-dark">Sistem menggunakan penghitungan waktu <strong>Real-time</strong> sejak batch didaftarkan.</p>
             </div>
         </div>
     </div>
@@ -144,24 +158,82 @@
 
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // Auto-generate batch number suggestion
-    $('#type').change(function() {
-        if (!$(this).val()) return;
-        
-        const year = new Date().getFullYear();
-        const typeCode = $(this).val() === 'pengolahan' ? 'P' : 'K';
-        
-        $.get('/api/cpb/last-number?type=' + $(this).val(), function(data) {
-            const nextNumber = data.last_number + 1;
-            const batchNumber = `CPB-${year}-${typeCode}${nextNumber.toString().padStart(3, '0')}`;
+
+$('#type').on('change', function() {
+    const type = $(this).val();
+    const batchInput = $('#batch_number');
+    
+    if (!type) {
+        batchInput.val('');
+        return;
+    }
+    
+    const year = new Date().getFullYear();
+    const typeCode = (type === 'pengolahan') ? 'P' : 'K';
+    
+    batchInput.val('Checking...');
+
+    $.ajax({
+        url: '/api/cpb/last-number', // Pastikan route API sudah benar
+        type: 'GET',
+        data: { type: type },
+        success: function(response) {
+            // Ambil angka terakhir dari response, tambahkan 1
+            const nextNumber = (parseInt(response.last_number) || 0) + 1;
             
-            $('#batch_number').val(batchNumber);
-        }).fail(function() {
-            const batchNumber = `CPB-${year}-${typeCode}001`;
-            $('#batch_number').val(batchNumber);
-        });
+            // Format padding 3 digit (001, 002, dst)
+            const formattedNumber = nextNumber.toString().padStart(3, '0');
+            const newBatchNumber = `CPB-${year}-${typeCode}${formattedNumber}`;
+            
+            batchInput.val(newBatchNumber);
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            // Fallback jika error (misal koneksi putus)
+            batchInput.val(`CPB-${year}-${typeCode}001`);
+        }
     });
 });
+
+/**
+ * Fungsi untuk menangani pemilihan file dan menampilkan preview informasi
+ */
+function handleFileSelect(input) {
+    const previewContainer = document.getElementById('fileInfoPreview');
+    const nameLabel = document.getElementById('previewName');
+    const sizeLabel = document.getElementById('previewSize');
+    const inputLabel = document.querySelector('.custom-file-label');
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        nameLabel.textContent = file.name;
+        inputLabel.textContent = file.name;
+        
+        // Konversi ukuran file ke KB atau MB
+        const fileSize = (file.size / 1024).toFixed(2);
+        if (fileSize > 1024) {
+            sizeLabel.textContent = (fileSize / 1024).toFixed(2) + ' MB';
+        } else {
+            sizeLabel.textContent = fileSize + ' KB';
+        }
+        
+        previewContainer.classList.remove('d-none');
+    } else {
+        resetFileSelection();
+    }
+}
+
+/**
+ * Fungsi untuk mereset pilihan file
+ */
+function resetFileSelection() {
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('fileInfoPreview');
+    const inputLabel = document.querySelector('.custom-file-label');
+
+    fileInput.value = ""; // Bersihkan nilai input
+    inputLabel.textContent = "Pilih berkas...";
+    previewContainer.classList.add('d-none');
+}
 </script>
 @endpush
