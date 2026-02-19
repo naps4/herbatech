@@ -1,12 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Performance Report')
-@section('page-title', 'Laporan Performance')
-
-@section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('reports.index') }}">Laporan</a></li>
-    <li class="breadcrumb-item active">Performance</li>
+@section('title')
+@section('page-title')
 @endsection
 
 @section('content')

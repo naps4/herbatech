@@ -1,12 +1,15 @@
 @extends('layouts.admin')
 
-@section('admin-title', 'Tambah User Baru')
-@section('admin-breadcrumb')
-    <li class="breadcrumb-item active">Tambah User</li>
+{{-- Tambahkan ini untuk mengubah judul di tab browser --}}
+@section('title')
+
+{{-- Tambahkan ini untuk mengubah judul besar di atas form --}}
+@section('page-title')
+
 @endsection
 
 @section('admin-content')
-<div class="row">
+<div class="row mt-4"> 
     <div class="col-md-6">
         <div class="card card-primary">
             <div class="card-header">
