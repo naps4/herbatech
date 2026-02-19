@@ -265,11 +265,6 @@ class CPBController extends Controller
             'cpb_current_dept' => $cpb->current_department_id,
         ]);
 
-        // Temporary: Allow all for testing
-        // if (!Gate::allows('view', $cpb)) {
-        //     abort(403, 'Unauthorized action.');
-        // }
-
         $handoverLogs = $cpb->handoverLogs()
             ->with(['sender', 'receiver'])
             ->orderBy('created_at', 'desc')
@@ -479,6 +474,28 @@ class CPBController extends Controller
             return back()->with('error', 'Gagal mengunggah file: ' . $e->getMessage());
         }
     }
+
+    public function destroyAttachment(CPB $cpb, CPBAttachment $attachment)
+{
+    // Cek izin (Hanya pemegang dokumen aktif atau SuperAdmin)
+    if (auth()->user()->role !== $cpb->status && !auth()->user()->isSuperAdmin()) {
+        abort(403, 'Anda tidak memiliki akses untuk menghapus lampiran ini.');
+    }
+
+    try {
+        // 1. Hapus file fisik dari folder storage
+        if (Storage::disk('public')->exists($attachment->file_path)) {
+            Storage::disk('public')->delete($attachment->file_path);
+        }
+
+        // 2. Hapus data dari database
+        $attachment->delete();
+
+        return back()->with('success', 'Lampiran berhasil dihapus.');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Gagal menghapus lampiran: ' . $e->getMessage());
+    }
+}
 
     public function requestToQA(CPB $cpb)
     {

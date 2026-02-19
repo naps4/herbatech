@@ -232,26 +232,28 @@
                         @endif
                     @endif
 
-                    {{-- 2. Tombol HANDOVER (Penerusan Berdasarkan Alur) --}}
-                    @can('handover', $cpb)
-                        @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
-                            <a href="{{ route('handover.create', $cpb) }}" class="btn btn-success btn-block btn-lg shadow-sm font-weight-bold py-3 mb-3">
-                                <i class="fas fa-paper-plane mr-2"></i> SERAHKAN CPB
-                                <small class="d-block text-xs font-weight-normal mt-1 opacity-75">Kirim ke Bagian {{ strtoupper($cpb->getNextDepartment()) }}</small>
-                            </a>
-                        @endif
-                    @endcan
+                    @if(auth()->user()->role === $cpb->status || auth()->user()->isSuperAdmin())
+                        @can('handover', $cpb)
+                            @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
+                                <a href="{{ route('handover.create', $cpb) }}" class="btn btn-success btn-block btn-lg shadow-sm font-weight-bold py-3 mb-3">
+                                    <i class="fas fa-paper-plane mr-2"></i> SERAHKAN CPB
+                                    <small class="d-block text-xs font-weight-normal mt-1 opacity-75">Kirim ke Bagian {{ strtoupper($cpb->getNextDepartment()) }}</small>
+                                </a>
+                            @endif
+                        @endcan
+                    @endif
 
-                    {{-- 3. Tombol REWORK (Kembalikan ke Tahap Sebelumnya) --}}
-                    @if($cpb->getPreviousDepartment() && Gate::allows('handover', $cpb))
-                        <button type="button" class="btn btn-outline-danger btn-block py-2" data-toggle="modal" data-target="#modal-reject">
-                            <i class="fas fa-undo-alt mr-2"></i> KEMBALIKAN (REWORK)
-                        </button>
+                    @if(auth()->user()->role === $cpb->status || auth()->user()->isSuperAdmin())
+                        @if($cpb->getPreviousDepartment() && Gate::allows('handover', $cpb))
+                            <button type="button" class="btn btn-outline-danger btn-block py-2" data-toggle="modal" data-target="#modal-reject">
+                                <i class="fas fa-undo-alt mr-2"></i> KEMBALIKAN (REWORK)
+                            </button>
+                        @endif
                     @endif
                     
                     <a href="{{ route('cpb.index') }}" class="btn btn-link btn-block text-muted mt-3">
                         <i class="fas fa-arrow-left mr-1 text-xs"></i> Kembali ke Daftar CPB
-                    </a>
+                    </a>    
                 </div>
             </div>
         </div>

@@ -36,7 +36,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="status">Status</label>
+                                <label for="status">Status Tahapan</label>
                                 <select name="status" id="status" class="form-control">
                                     <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>Semua</option>
                                     <option value="rnd" {{ request('status') == 'rnd' ? 'selected' : '' }}>RND</option>
@@ -70,7 +70,7 @@
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <button type="submit" class="btn btn-primary shadow-sm">
+                            <button type="submit" class="btn btn-primary shadow-sm px-4">
                                 <i class="fas fa-filter mr-1"></i> Terapkan Filter
                             </button>
                             <a href="{{ route('cpb.index') }}" class="btn btn-default">
@@ -88,10 +88,10 @@
     <div class="col-12">
         <div class="card shadow">
             <div class="card-header bg-white">
-                <h3 class="card-title font-weight-bold">List Data Batch</h3>
+                <h3 class="card-title font-weight-bold text-dark">List Data Batch</h3>
                 <div class="card-tools">
                     @can('create', App\Models\CPB::class)
-                    <a href="{{ route('cpb.create') }}" class="btn btn-sm btn-primary">
+                    <a href="{{ route('cpb.create') }}" class="btn btn-sm btn-primary shadow-sm px-3">
                         <i class="fas fa-plus mr-1"></i> Tambah CPB
                     </a>
                     @endcan
@@ -99,14 +99,14 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 align-middle">
                         <thead class="bg-light text-muted small text-uppercase">
                             <tr>
                                 <th class="pl-4">No. Batch</th>
                                 <th>Jenis</th>
                                 <th>Produk</th>
                                 <th>Status Tahap</th>
-                                <th>Lokasi/Pemegang</th>
+                                <th>Pemegang Saat Ini</th>
                                 <th>Running Time</th>
                                 <th class="text-right pr-4">Aksi</th>
                             </tr>
@@ -118,55 +118,52 @@
                                         <span class="font-weight-bold text-primary">{{ $cpb->batch_number }}</span>
                                     </td>
                                     <td class="align-middle">
-                                        <span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }}">
+                                        <span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }} px-2 py-1">
                                             {{ ucfirst($cpb->type) }}
                                         </span>
                                     </td>
                                     <td class="align-middle">{{ $cpb->product_name }}</td>
                                     <td class="align-middle">{!! $cpb->status_badge !!}</td>
-                                    <td class="align-middle">
-                                        <span class="text-sm">
-                                            <i class="fas fa-user-circle text-muted mr-1"></i>
-                                            {{ $cpb->currentDepartment->name ?? 'System' }}
-                                        </span>
+                                    <td class="align-middle text-sm text-dark">
+                                        <i class="fas fa-user-circle text-muted mr-1"></i>
+                                        {{ $cpb->currentDepartment->name ?? '-' }}
                                     </td>
                                     <td class="align-middle">
-                                        <span class="badge bg-light border {{ $cpb->is_overdue ? 'text-danger border-danger' : 'text-dark' }}">
+                                        <span class="badge bg-light border {{ $cpb->is_overdue ? 'text-danger border-danger' : 'text-muted' }}">
                                             <i class="far fa-clock mr-1"></i> {{ $cpb->formatted_duration }}
                                         </span>
                                     </td>
                                     <td class="text-right pr-4 align-middle">
                                         <div class="btn-group">
-                                            {{-- 1. Tombol View --}}
-                                            <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-sm btn-info" title="Lihat Detail">
+                                            {{-- 1. Detail --}}
+                                            <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-sm btn-outline-info" title="Lihat Detail">
                                                 <i class="fas fa-eye"></i>
                                             </a>
 
-                                            {{-- 2. Tombol Edit (Hanya RND di Awal) --}}
-                                            @if($cpb->status == 'rnd' && auth()->user()->id == $cpb->created_by)
-                                                <a href="{{ route('cpb.edit', $cpb) }}" class="btn btn-sm btn-warning" title="Edit">
+                                            {{-- 2. Edit (Hanya RND di awal) --}}
+                                            @if($cpb->status == 'rnd' && auth()->id() == $cpb->created_by)
+                                                <a href="{{ route('cpb.edit', $cpb) }}" class="btn btn-sm btn-outline-warning" title="Edit Data">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                             @endif
 
-                                            {{-- 3. Tombol Handover (Dinamis) --}}
+                                            {{-- 3. Handover (Dinamis: Disembunyikan jika tahap rilis) --}}
                                             @can('handover', $cpb)
-                                                {{-- Jika QA Final, tombol handover disembunyikan agar user menggunakan tombol Release --}}
                                                 @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
-                                                <a href="{{ route('handover.create', $cpb) }}" class="btn btn-sm btn-success" title="Serah Terima">
+                                                <a href="{{ route('handover.create', $cpb) }}" class="btn btn-sm btn-outline-success" title="Serah Terima CPB">
                                                     <i class="fas fa-forward"></i>
                                                 </a>
                                                 @endif
                                             @endcan
 
-                                            {{-- 4. Tombol Release: Hanya muncul di Tahap QA Final (Setelah QC) --}}
+                                            {{-- 4. Tombol Release: Muncul HANYA jika status QA Final (setelah QC) --}}
                                             @if($cpb->status === 'qa' && $cpb->is_final_qa)
                                                 @can('release', $cpb)
-                                                    <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="d-inline">
+                                                    <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="d-inline ms-1">
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm btn-primary" 
-                                                                title="Release Product" 
-                                                                onclick="return confirm('Apakah Anda yakin ingin meluluskan (Release) batch ini?')">
+                                                                title="Luluskan Produk (Release)" 
+                                                                onclick="return confirm('Apakah Anda yakin ingin meluluskan (Release) batch {{ $cpb->batch_number }}?')">
                                                             <i class="fas fa-check-double"></i>
                                                         </button>
                                                     </form>
@@ -177,8 +174,9 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
-                                        <p class="text-muted">Tidak ditemukan data CPB.</p>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 opacity-20"></i>
+                                        <p>Tidak ada data CPB yang ditemukan.</p>
                                     </td>
                                 </tr>
                             @endforelse
@@ -191,11 +189,11 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <p class="text-muted small mb-0">
-                            Menampilkan {{ $cpbs->firstItem() ?? 0 }} sampai {{ $cpbs->lastItem() ?? 0 }} dari {{ $cpbs->total() }} data
+                            Menampilkan <strong>{{ $cpbs->firstItem() ?? 0 }}</strong> sampai <strong>{{ $cpbs->lastItem() ?? 0 }}</strong> dari <strong>{{ $cpbs->total() }}</strong> data
                         </p>
                     </div>
                     <div>
-                        {{-- Laravel Pagination Links --}}
+                        {{-- Navigasi Pagination dengan preserve filter query string --}}
                         {{ $cpbs->appends(request()->query())->links() }}
                     </div>
                 </div>
@@ -209,5 +207,7 @@
 <style>
     .pagination { margin-bottom: 0; }
     .page-item.active .page-link { background-color: #007bff; border-color: #007bff; }
+    .table td, .table th { vertical-align: middle; }
+    .opacity-20 { opacity: 0.2; }
 </style>
 @endpush

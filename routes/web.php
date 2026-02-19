@@ -62,7 +62,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cpb}/edit', [CPBController::class, 'edit'])->name('edit');
         Route::put('/{cpb}', [CPBController::class, 'update'])->name('update');
         Route::delete('/cpb/{cpb}/attachment/{attachment}', [App\Http\Controllers\CPBController::class, 'destroyAttachment'])
-                ->name('cpb.attachment.destroy');
+            ->name('cpb.attachment.destroy');
         
         // Handover routes
         Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handoverForm');

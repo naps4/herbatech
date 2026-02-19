@@ -16,9 +16,9 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // Pastikan mapping ini benar
         CPB::class => CPBPolicy::class,
         User::class => UserPolicy::class,
+        \App\Models\User::class => \App\Policies\UserPolicy::class,
     ];
 
     /**

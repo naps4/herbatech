@@ -22,7 +22,6 @@ class CPBPolicy
             return true;
         }
         
-        // HARUS bisa melihat jika sedang memegang dokumen
         if ($cpb->current_department_id === $user->id || $cpb->created_by === $user->id) {
             return true;
         }
@@ -34,8 +33,6 @@ class CPBPolicy
         return $userIndex !== false && $cpbIndex !== false && $cpbIndex <= $userIndex;
     }
 
-    // app/Policies/CPBPolicy.php
-
 public function create(User $user): bool
 {
     return in_array($user->role, ['rnd', 'superadmin','qa']);
@@ -45,7 +42,6 @@ public function create(User $user): bool
     {
         if ($user->role === 'superadmin') return true;
 
-        // Izinkan update jika user adalah pemegang dokumen saat ini (termasuk saat rework)
         return $cpb->current_department_id === $user->id && $cpb->status === $user->role;
     }
 
