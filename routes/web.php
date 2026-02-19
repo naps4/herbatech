@@ -58,7 +58,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cpb}', [CPBController::class, 'show'])->name('show');
         Route::get('/{cpb}/edit', [CPBController::class, 'edit'])->name('edit');
         Route::put('/{cpb}', [CPBController::class, 'update'])->name('update');
-        Route::post('/{cpb}/reject', [CPBController::class, 'reject'])->name('reject');
+        Route::delete('/cpb/{cpb}/attachment/{attachment}', [App\Http\Controllers\CPBController::class, 'destroyAttachment'])
+                ->name('cpb.attachment.destroy');
+        
+        // Handover routes
+        Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handoverForm');
+        Route::post('/{cpb}/handover', [CPBController::class, 'handover'])->name('handover');
+        
+        // Upload route
         Route::post('/{cpb}/upload', [CPBController::class, 'uploadAttachment'])->name('upload');
         Route::post('/{cpb}/request', [CPBController::class, 'requestToQA'])->name('request');
         Route::post('/{cpb}/release', [CPBController::class, 'release'])->name('release');
