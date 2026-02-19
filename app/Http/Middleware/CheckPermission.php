@@ -48,7 +48,7 @@ class CheckPermission
     
     private function getAllowedStatuses($user)
     {
-        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa_final', 'released'];
+        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa', 'released'];
         $userIndex = array_search($user->role, $flow);
         
         if ($userIndex === false) {

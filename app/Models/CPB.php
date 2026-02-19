@@ -220,16 +220,33 @@ class CPB extends Model
 
     public function getPreviousDepartment()
     {
-        // Konsisten dengan flow di getNextDepartment
+
         $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa', 'released'];
-        $currentIndex = array_search($this->status, $flow);
-        
+        $currentStatus = $this->status;
+
+        // KASUS 1: Jika status saat ini adalah QA (Ambiguitas Tahap 1 atau 2)
+        if ($currentStatus === 'qa') {
+
+            $hasPassedQC = $this->handoverLogs()->where('from_status', 'qc')->exists();
+            return $hasPassedQC ? 'qc' : 'rnd';
+        }
+
+        // KASUS 2: Jika status saat ini adalah Warehouse (wh)
+        if ($currentStatus === 'wh') {
+            return 'ppic';
+        }
+
+        // KASUS 3: Jika status saat ini adalah Released
+        if ($currentStatus === 'released') {
+            return 'qa';
+        }
+        $currentIndex = array_search($currentStatus, $flow);
         if ($currentIndex !== false && $currentIndex > 0) {
             return $flow[$currentIndex - 1];
         }
-        
         return null;
     }
+    
 
     public function checkOverdue()
     {

@@ -16,7 +16,7 @@
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-header">
                 <h3 class="card-title font-weight-bold">
-                    <i class="fas fa-bolt mr-1 text-yellow"></i> Quick Actions
+                Quick Actions
                 </h3>
             </div>
             <div class="card-body">
