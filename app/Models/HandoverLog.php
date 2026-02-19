@@ -34,7 +34,7 @@ class HandoverLog extends Model
         return $this->belongsTo(CPB::class, 'cpb_id'); // Tentukan column name
     }
 
-    public function sender()
+    public function sender() 
     {
         return $this->belongsTo(User::class, 'handed_by');
     }

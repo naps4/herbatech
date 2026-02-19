@@ -48,6 +48,24 @@ class CPBController extends Controller
 
         if ($request->get('rework') === 'true') {
         $query->where('is_rework', true);
+        
+        //Role-based filtering
+        if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
+            $query->where(function($q) use ($user) {
+                $q->where('current_department_id', $user->id)
+                ->orWhere('created_by', $user->id)
+                ->orWhere('status', 'released');
+            });
+        
+        }
+
+        //Paginate dan Return HANYA DI AKHIR
+        $cpbs = $query->orderBy('is_overdue', 'desc')
+                        ->orderBy('entered_current_status_at', 'asc')
+                        ->paginate(10) // Sesuaikan jumlah per halaman
+                        ->withQueryString();
+            
+        return view('cpb.index', compact('cpbs'));
     }
         
         if ($request->has('batch_number')) {
@@ -82,26 +100,25 @@ class CPBController extends Controller
 
     public function reject(Request $request, CPB $cpb)
     {
-        // Validasi wewenang (menggunakan policy yang sudah ada)
         if (!Gate::allows('handover', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
 
         $previousStatus = $cpb->getPreviousDepartment();
-        
         if (!$previousStatus) {
             return back()->with('error', 'Batch sudah berada di tahap awal.');
         }
 
-        $request->validate([
-            'rework_note' => 'required|string|max:1000',
-        ]);
+        $request->validate(['rework_note' => 'required|string|max:1000']);
+
+        // HITUNG DURASI
+        $enteredAt = $cpb->entered_current_status_at;
+        $durationInMinutes = $enteredAt ? $enteredAt->diffInMinutes(now()) : 0;
+        $durationInHours = round($durationInMinutes / 60, 2);
 
         DB::beginTransaction();
         try {
             $oldStatus = $cpb->status;
-
-            // Update status CPB dan tandai sebagai rework
             $cpb->update([
                 'status' => $previousStatus,
                 'current_department_id' => null,
@@ -110,20 +127,20 @@ class CPBController extends Controller
                 'rework_note' => $request->rework_note,
                 'is_overdue' => false,
             ]);
-
-            // Catat ke HandoverLog sebagai histori penolakan
+            
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
                 'from_status' => $oldStatus,
-                'to_status' => $previousStatus,
+                'to_status' => $previousStatus, // Ganti dari $nextStatus ke $previousStatus
                 'handed_by' => auth()->id(),
                 'handed_at' => now(),
-                'notes' => '[REJECT/REWORK]: ' . $request->rework_note,
+                'duration_in_hours' => $durationInHours, 
+                'was_overdue' => $cpb->is_overdue,
+                'notes' => 'REJECT: ' . $request->rework_note
             ]);
 
             DB::commit();
-            return redirect()->route('cpb.show', $cpb)
-                        ->with('warning', 'Batch berhasil dikembalikan ke ' . $previousStatus);
+            return redirect()->route('cpb.show', $cpb)->with('warning', 'Batch ditolak balik ke ' . $previousStatus);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal memproses penolakan: ' . $e->getMessage());
@@ -291,34 +308,35 @@ class CPBController extends Controller
     
     public function handover(Request $request, CPB $cpb)
     {
-        // Gunakan Gate untuk check permission
         if (!Gate::allows('handover', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $user = auth()->user();
         $nextStatus = $cpb->getNextDepartment();
-        
+
         if (!$nextStatus) {
             return back()->with('error', 'Tidak dapat melakukan handover. CPB sudah di status akhir.');
         }
-        
+
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'notes' => 'nullable|string|max:500',
         ]);
-        
+
+        // HITUNG DURASI DISINI (Agar tidak undefined)
+        $enteredAt = $cpb->entered_current_status_at;
+        $durationInMinutes = $enteredAt ? $enteredAt->diffInMinutes(now()) : 0;
+        $durationInHours = round($durationInMinutes / 60, 2);
+
         DB::beginTransaction();
-        
         try {
             $receiver = User::findOrFail($request->receiver_id);
             
-            // Verify receiver is in correct department
             if ($receiver->role !== $nextStatus) {
                 throw new \Exception('Penerima tidak berada di departemen yang benar.');
             }
-            
-            // Update CPB status
+
             $oldStatus = $cpb->status;
             $cpb->update([
                 'status' => $nextStatus,
@@ -330,25 +348,21 @@ class CPBController extends Controller
                 'rework_note' => null,
             ]);
             
-            // Create handover log
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
                 'from_status' => $oldStatus,
                 'to_status' => $nextStatus,
                 'handed_by' => $user->id,
                 'handed_at' => now(),
+                'duration_in_hours' => $durationInHours, // Sekarang sudah ada isinya
                 'was_overdue' => $cpb->is_overdue,
                 'notes' => $request->notes,
             ]);
-            
-            // Trigger event
+
             event(new CPBHandover($cpb, $user, $receiver));
-            
             DB::commit();
             
-            return redirect()->route('dashboard')
-                           ->with('success', 'CPB berhasil diserahkan ke ' . $nextStatus);
-            
+            return redirect()->route('dashboard')->with('success', 'CPB berhasil diserahkan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal melakukan handover: ' . $e->getMessage());
@@ -371,7 +385,8 @@ class CPBController extends Controller
                 'entered_current_status_at' => now(),
                 'is_overdue' => false,
             ]);
-            
+
+                        
             // Create handover log for release
             HandoverLog::create([
                 'cpb_id' => $cpb->id,

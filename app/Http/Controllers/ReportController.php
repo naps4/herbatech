@@ -10,6 +10,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CPBExport;
+use App\Exports\PerformanceExport;
 
 class ReportController extends Controller
 {
@@ -176,82 +177,74 @@ public function export(Request $request)
         return view('reports.audit', compact('handovers', 'users'));
     }
     
- public function performance(Request $request)
-{
-    $this->authorize('view-reports');
+    public function performance(Request $request)
+    {
+        // 1. Gunakan satu query dasar untuk semua hitungan agar sinkron
+        $baseQuery = \App\Models\HandoverLog::query();
+        
+        // 2. Apply Filters (Tanggal & Departemen)
+        if ($request->filled('start_date')) {
+            $baseQuery->whereDate('handed_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $baseQuery->whereDate('handed_at', '<=', $request->end_date);
+        }
+        if ($request->filled('department')) {
+            $baseQuery->where('from_status', $request->department);
+        }
     
-    // Query untuk department performance
-    $deptQuery = HandoverLog::query();
-    $userQuery = HandoverLog::query();
-    
-    // Apply filters untuk kedua query
-    if ($request->has('start_date') && $request->start_date) {
-        $deptQuery->whereDate('handed_at', '>=', $request->start_date);
-        $userQuery->whereDate('handed_at', '>=', $request->start_date);
+        // 3. Get department performance (untuk Grafik & Tabel Detail)
+        $performance = (clone $baseQuery)
+        ->where('from_status', '!=', 'created') 
+        ->selectRaw('
+            from_status,
+            COUNT(*) as total_handovers,
+            AVG(duration_in_hours) as avg_duration,
+            SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) as overdue_count,
+            (SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) / COUNT(*) * 100) as overdue_percentage
+        ')
+        ->groupBy('from_status')
+        ->get();
+        
+        // 4. Get user performance (Top Performers)
+        // Cukup gunakan with('sender') dan groupBy, tidak perlu map manual lagi
+        $userPerformance = (clone $baseQuery)
+            ->with('sender')
+            ->selectRaw('
+                handed_by,
+                COUNT(*) as total_handovers_count,
+                AVG(duration_in_hours) as avg_duration,
+                SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) as overdue_count
+            ')
+            ->groupBy('handed_by')
+            ->get()
+            ->sortByDesc('total_handovers_count')
+            ->values();
+        
+        // 5. Summary statistics (untuk Box Kecil Biru/Hijau/Merah)
+        $summary = [
+            'total_handovers' => $baseQuery->count(),
+            'avg_duration' => $baseQuery->avg('duration_in_hours') ?? 0,
+            'overdue_count' => $baseQuery->where('was_overdue', true)->count(),
+        ];
+        
+        // AJAX handling
+        if ($request->ajax() || $request->has('ajax')) {
+            return response()->json([
+                'performance' => $performance,
+                'userPerformance' => $userPerformance,
+                'summary' => $summary
+            ]);
+        }
+        
+        // Export handling
+        if ($request->has('export')) {
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new PerformanceExport($performance, $userPerformance), 
+                'performance-report-' . date('Y-m-d') . '.xlsx'
+            );
+        }
+        
+        return view('reports.performance', compact('performance', 'userPerformance', 'summary'));
     }
-    
-    if ($request->has('end_date') && $request->end_date) {
-        $deptQuery->whereDate('handed_at', '<=', $request->end_date);
-        $userQuery->whereDate('handed_at', '<=', $request->end_date);
-    }
-    
-    // Department filter
-    if ($request->has('department') && $request->department) {
-        $deptQuery->where('from_status', $request->department);
-        $userQuery->where('from_status', $request->department);
-    }
-    
-    // Get department performance - gunakan DB::raw untuk order by
-    $performance = $deptQuery->selectRaw('
-        from_status,
-        COUNT(*) as total_handovers,
-        AVG(duration_in_hours) as avg_duration,
-        MIN(duration_in_hours) as min_duration,
-        MAX(duration_in_hours) as max_duration,
-        SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) as overdue_count
-    ')
-    ->groupBy('from_status')
-    ->orderBy('from_status')
-    ->get();
-    
-    // Get user performance - gunakan subquery atau raw untuk order
-    $userPerformanceRaw = $userQuery->selectRaw('
-        handed_by,
-        COUNT(*) as total_handovers_count,
-        AVG(duration_in_hours) as avg_duration,
-        SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) as overdue_count
-    ')
-    ->groupBy('handed_by')
-    ->get();
-    
-    // Load sender relationship dan sort secara manual
-    $userPerformance = $userPerformanceRaw->map(function($item) {
-        $item->sender = \App\Models\User::find($item->handed_by);
-        return $item;
-    })->sortByDesc('total_handovers_count')->values();
-    
-    // Summary statistics
-    $summary = [
-        'total_handovers' => $deptQuery->count(),
-        'avg_duration' => $deptQuery->avg('duration_in_hours'),
-        'overdue_count' => $deptQuery->where('was_overdue', true)->count(),
-    ];
-    
-    // For AJAX requests, return JSON
-    if ($request->ajax() || $request->has('ajax')) {
-        return response()->json([
-            'performance' => $performance,
-            'userPerformance' => $userPerformance,
-            'summary' => $summary
-        ]);
-    }
-    
-    // For export
-    if ($request->has('export')) {
-        return Excel::download(new PerformanceExport($performance, $userPerformance), 
-            'performance-report-' . date('Y-m-d') . '.xlsx');
-    }
-    
-    return view('reports.performance', compact('performance', 'userPerformance', 'summary'));
-}
 }
