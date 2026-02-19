@@ -1,16 +1,13 @@
 {{-- resources/views/notifications/index.blade.php --}}
 @extends('layouts.app')
 
-@section('title', 'Notifikasi')
-@section('page-title', 'Notifikasi')
+@section('title')
+@section('page-title')
 
-@section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item active">Notifikasi</li>
 @endsection
 
 @section('content')
-<div class="row">
+<div class="row-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
