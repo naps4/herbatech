@@ -60,11 +60,10 @@ class DashboardController extends Controller
         
         return response()->json(['success' => true]);
     }
-    
-    public function markAllNotificationsAsRead()
-    {
-        auth()->user()->unreadNotifications()->update(['is_read' => true]);
-        
-        return response()->json(['success' => true]);
-    }
+    public function exportPdf(CPB $cpb)
+{
+    // Logika untuk generate PDF
+    $pdf = PDF::loadView('cpb.export-pdf', compact('cpb'));
+    return $pdf->download('CPB-'.$cpb->batch_number.'.pdf');
+}
 }

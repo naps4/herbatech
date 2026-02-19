@@ -5,14 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\CPB;
 use App\Models\HandoverLog;
 use App\Models\User;
+use App\Models\CPBAttachment;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Events\CPBCreated;
 use App\Events\CPBHandover;
-use Illuminate\Support\Facades\Log;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class CPBController extends Controller
 {
@@ -25,36 +26,23 @@ class CPBController extends Controller
     {
         $user = auth()->user();
         $query = CPB::query();
-        $cpbs = $query->latest()->paginate(7);
-        return view('cpb.index', compact('cpbs'));
 
+        // Fix logic index agar filter berjalan (Sebelumnya ada return di atas filter)
         if ($request->get('status') === 'active') {
             $query->where('status', '!=', 'released');
         } elseif ($request->get('status') === 'released') {
             $query->where('status', 'released');
-        } elseif ($request->get('status') === 'all') {
-        } else {
-            $query->where('status', '!=', 'released');
         }
 
-        // Filters lainnya
         if ($request->has('type') && $request->type != 'all') {
             $query->where('type', $request->type);
         }
 
-        if ($request->has('start_date')) {
-            $query->whereDate('created_at', $request->start_date);
-        }
-
-        if ($request->get('rework') === 'true') {
-        $query->where('is_rework', true);
-    }
-        
         if ($request->has('batch_number')) {
             $query->where('batch_number', 'like', '%' . $request->batch_number . '%');
         }
 
-        // Role-based filtering (Tetap gunakan perbaikan role sebelumnya)
+        // Role-based filtering
         if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
                 $q->where('current_department_id', $user->id)
@@ -67,47 +55,176 @@ class CPBController extends Controller
             });
         }
 
-        // Overdue filter
-        if ($request->has('overdue') && $request->overdue == 'true') {
-            $query->where('is_overdue', true);
-        }
-
         $cpbs = $query->orderBy('is_overdue', 'desc')
             ->orderBy('entered_current_status_at', 'asc')
-            ->paginate(20)
+            ->paginate(15)
             ->withQueryString();
 
         return view('cpb.index', compact('cpbs'));
     }
 
-    // CPBController.php
-
-    public function reject(Request $request, CPB $cpb)
+    public function show(CPB $cpb)
     {
-        // Validasi wewenang (menggunakan policy yang sudah ada)
+        $handoverLogs = $cpb->handoverLogs()->with(['sender', 'receiver'])->latest()->get();
+        $nextDepartment = $cpb->getNextDepartment();
+        $canHandover = Gate::allows('handover', $cpb);
+
+        // FITUR: Cek apakah user saat ini sudah mengunggah dokumen di tahap ini
+        $hasAttachment = $cpb->attachments()
+            ->where('uploaded_by', auth()->id())
+            ->exists();
+
+        return view('cpb.show', compact('cpb', 'handoverLogs', 'nextDepartment', 'canHandover', 'hasAttachment'));
+    }
+
+    public function handoverForm(CPB $cpb)
+    {
         if (!Gate::allows('handover', $cpb)) {
-            abort(403, 'Unauthorized action.');
+            abort(403);
         }
 
-        $previousStatus = $cpb->getPreviousDepartment();
-        
-        if (!$previousStatus) {
-            return back()->with('error', 'Batch sudah berada di tahap awal.');
+        // VALIDASI DOKUMEN: User tidak boleh masuk ke form jika belum upload file
+        $hasAttachment = $cpb->attachments()->where('uploaded_by', auth()->id())->exists();
+        if (!$hasAttachment && !auth()->user()->isSuperAdmin()) {
+            return redirect()->route('cpb.show', $cpb)
+                ->with('error', 'Akses Ditolak! Harap unggah dokumen laporan di bagian Lampiran terlebih dahulu.');
+        }
+
+        $nextStatus = $cpb->getNextDepartment();
+        if (!$nextStatus) {
+            return back()->with('error', 'CPB sudah di status akhir.');
+        }
+
+        $nextUsers = User::where('role', $nextStatus)->get();
+
+        // PASTIKAN FILE INI ADA: resources/views/handover/create.blade.php
+        return view('handover.create', compact('cpb', 'nextStatus', 'nextUsers'));
+    }
+
+    public function handover(Request $request, CPB $cpb)
+    {
+        if (!Gate::allows('handover', $cpb)) {
+            abort(403);
         }
 
         $request->validate([
-            'rework_note' => 'required|string|max:1000',
+            'receiver_id' => 'required|exists:users,id',
+            'notes' => 'nullable|string|max:500',
+            'file' => 'nullable|file|max:10240'
+        ]);
+        
+        DB::beginTransaction();
+        try {
+            $receiver = User::findOrFail($request->receiver_id);
+            
+            // Simpan file jika dilampirkan langsung di form handover
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $path = $file->storeAs('attachments/' . $cpb->id, time() . '_' . $file->getClientOriginalName(), 'public');
+                $cpb->attachments()->create([
+                    'uploaded_by' => auth()->id(),
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientOriginalExtension(),
+                    'description' => 'Dokumen Serah Terima'
+                ]);
+            }
+            
+            $oldStatus = $cpb->status;
+            $nextStatus = $cpb->getNextDepartment();
+
+            $cpb->update([
+                'status' => $nextStatus,
+                'current_department_id' => $receiver->id,
+                'entered_current_status_at' => now(),
+                'is_rework' => false,
+            ]);
+            
+            HandoverLog::create([
+                'cpb_id' => $cpb->id,
+                'from_status' => $oldStatus,
+                'to_status' => $nextStatus,
+                'handed_by' => auth()->id(),
+                'received_by' => $receiver->id,
+                'handed_at' => now(),
+                'notes' => $request->notes,
+            ]);
+            
+            event(new CPBHandover($cpb, auth()->user(), $receiver));
+            DB::commit();
+            
+            return redirect()->route('dashboard')->with('success', 'CPB berhasil diserahkan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    public function store(Request $request)
+    {
+        if (!Gate::allows('create', CPB::class)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'batch_number' => 'required|unique:cpbs,batch_number|max:50',
+            'type' => 'required|in:pengolahan,pengemasan',
+            'product_name' => 'required|max:100',
+            'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', 
         ]);
 
-        $previousStatus = $cpb->getPreviousDepartment(); 
-        
-        // Cari log terakhir di mana dokumen dikirim KE departemen saat ini
-        $lastTransfer = $cpb->handoverLogs()
-            ->where('to_status', $cpb->status)
-            ->latest()
-            ->first();
+        DB::beginTransaction();
+        try {
+            $cpb = CPB::create([
+                'batch_number' => $validated['batch_number'],
+                'type' => $validated['type'],
+                'product_name' => $validated['product_name'],
+                'created_by' => auth()->id(),
+                'current_department_id' => auth()->id(),
+                'status' => 'rnd',
+                'entered_current_status_at' => now(),
+            ]);
 
-        // Kembalikan ke pengirim (handed_by)
+            // Simpan Dokumen Awal (RND)
+            $file = $request->file('file');
+            $path = $file->storeAs('attachments/' . $cpb->id, time() . '_' . $file->getClientOriginalName(), 'public');
+            $cpb->attachments()->create([
+                'uploaded_by' => auth()->id(),
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_type' => $file->getClientOriginalExtension(),
+                'description' => 'Dokumen Awal CPB'
+            ]);
+
+            HandoverLog::create([
+                'cpb_id' => $cpb->id,
+                'from_status' => 'created',
+                'to_status' => 'rnd',
+                'handed_by' => auth()->id(),
+                'handed_at' => now(),
+                'notes' => 'CPB dibuat oleh RND'
+            ]);
+
+            event(new CPBCreated($cpb));
+            DB::commit();
+
+            return redirect()->route('cpb.show', $cpb)->with('success', 'CPB Berhasil dibuat.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    public function reject(Request $request, CPB $cpb)
+    {
+        if (!Gate::allows('handover', $cpb)) {
+            abort(403);
+        }
+
+        $request->validate(['rework_note' => 'required|string|max:1000']);
+        $previousStatus = $cpb->getPreviousDepartment();
+
+        $lastTransfer = $cpb->handoverLogs()->where('to_status', $cpb->status)->latest()->first();
         $receiverId = $lastTransfer ? $lastTransfer->handed_by : User::where('role', $previousStatus)->first()->id;
 
         DB::beginTransaction();
@@ -121,11 +238,10 @@ class CPBController extends Controller
                 'entered_current_status_at' => now(),
             ]);
 
-            // Catat ke HandoverLog sebagai histori penolakan
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
                 'from_status' => $oldStatus,
-                'to_status' => $previousStatus, // Ganti dari $nextStatus ke $previousStatus
+                'to_status' => $previousStatus,
                 'handed_by' => auth()->id(),
                 'received_by' => $receiverId,
                 'handed_at' => now(),
@@ -133,14 +249,12 @@ class CPBController extends Controller
             ]);
 
             DB::commit();
-            return redirect()->route('cpb.show', $cpb)
-                        ->with('warning', 'Batch berhasil dikembalikan ke ' . $previousStatus);
+            return redirect()->route('cpb.show', $cpb)->with('warning', 'Batch dikembalikan ke ' . $previousStatus);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal: ' . $e->getMessage());
         }
     }
-
 
     public function create()
     {
@@ -178,104 +292,6 @@ class CPBController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-    {
-        // Cek apakah user bisa create CPB
-        if (!Gate::allows('create', CPB::class)) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $validated = $request->validate([
-            'batch_number' => 'required|unique:cpbs,batch_number|max:50',
-            'type' => 'required|in:pengolahan,pengemasan',
-            'product_name' => 'required|max:100',
-            'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', // Limit 20MB
-            'description' => 'nullable|string|max:255',
-        ]);
-
-        DB::beginTransaction();
-
-        try {
-            $cpb = CPB::create([
-                'batch_number' => $validated['batch_number'],
-                'type' => $validated['type'],
-                'product_name' => $validated['product_name'],
-                'schedule_duration' => 0, // Default 0 for flexible duration
-                'created_by' => auth()->id(),
-                'current_department_id' => auth()->id(),
-                'status' => 'rnd',
-                'entered_current_status_at' => now(),
-            ]);
-
-            // Handle Attachment
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
-                $fileName = $file->getClientOriginalName();
-                $fileType = $file->getClientOriginalExtension();
-
-                $path = $file->storeAs(
-                    'attachments/' . $cpb->id,
-                    time() . '_' . $fileName,
-                    'public'
-                );
-
-                $cpb->attachments()->create([
-                    'uploaded_by' => auth()->id(),
-                    'file_path' => $path,
-                    'file_name' => $fileName,
-                    'file_type' => $fileType,
-                    'description' => 'Dokumen Awal CPB'
-                ]);
-            }
-
-            // Create initial handover log
-            HandoverLog::create([
-                'cpb_id' => $cpb->id,
-                'from_status' => 'created',
-                'to_status' => 'rnd',
-                'handed_by' => auth()->id(),
-                'handed_at' => now(),
-                'notes' => 'CPB dibuat'
-            ]);
-
-            // Trigger event
-            event(new CPBCreated($cpb));
-
-            DB::commit();
-
-            return redirect()->route('cpb.show', $cpb)
-                ->with('success', 'CPB berhasil dibuat.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal membuat CPB: ' . $e->getMessage());
-        }
-    }
-
-    public function show(CPB $cpb)
-    {
-        // Debug information
-        $user = auth()->user();
-        Log::info('CPB Show Attempt:', [
-            'user_id' => $user->id,
-            'user_role' => $user->role,
-            'user_email' => $user->email,
-            'cpb_id' => $cpb->id,
-            'cpb_status' => $cpb->status,
-            'cpb_created_by' => $cpb->created_by,
-            'cpb_current_dept' => $cpb->current_department_id,
-        ]);
-
-        $handoverLogs = $cpb->handoverLogs()
-            ->with(['sender', 'receiver'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $nextDepartment = $cpb->getNextDepartment();
-        $canHandover = Gate::allows('handover', $cpb); // Temporary
-
-        return view('cpb.show', compact('cpb', 'handoverLogs', 'nextDepartment', 'canHandover'));
-    }
-
     public function edit(CPB $cpb)
     {
         // Gunakan Gate untuk check permission
@@ -301,90 +317,6 @@ class CPBController extends Controller
 
         return redirect()->route('cpb.show', $cpb)
             ->with('success', 'CPB berhasil diperbarui.');
-    }
-
-    public function handoverForm(CPB $cpb)
-    {
-        // Gunakan Gate untuk check permission
-        if (!Gate::allows('handover', $cpb)) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $nextStatus = $cpb->getNextDepartment();
-
-        if (!$nextStatus) {
-            return back()->with('error', 'Tidak dapat melakukan handover. CPB sudah di status akhir.');
-        }
-
-        $nextUsers = User::where('role', $nextStatus)->get();
-
-        return view('cpb.handover', compact('cpb', 'nextStatus', 'nextUsers'));
-    }
-
-    public function handover(Request $request, CPB $cpb)
-    {
-        if (!Gate::allows('handover', $cpb)) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $user = auth()->user();
-        $nextStatus = $cpb->getNextDepartment();
-
-        if (!$nextStatus) {
-            return back()->with('error', 'Tidak dapat melakukan handover. CPB sudah di status akhir.');
-        }
-
-        $request->validate([
-            'receiver_id' => 'required|exists:users,id',
-            'notes' => 'nullable|string|max:500',
-        ]);
-        
-        DB::beginTransaction();
-        
-        try {
-            $receiver = User::findOrFail($request->receiver_id);
-            
-            // Verify receiver is in correct department
-            if ($receiver->role !== $nextStatus) {
-                throw new \Exception('Penerima tidak berada di departemen yang benar.');
-            }
-            
-            // Update CPB status
-            $oldStatus = $cpb->status;
-            $cpb->update([
-                'status' => $nextStatus,
-                'current_department_id' => $receiver->id,
-                'entered_current_status_at' => now(),
-                'is_overdue' => false,
-                'overdue_since' => null,
-                'is_rework' => false,
-                'rework_note' => null,
-            ]);
-            
-            // Create handover log
-            HandoverLog::create([
-                'cpb_id' => $cpb->id,
-                'from_status' => $oldStatus,
-                'to_status' => $nextStatus,
-                'handed_by' => $user->id,
-                'handed_at' => now(),
-                'duration_in_hours' => $durationInHours, // Sekarang sudah ada isinya
-                'was_overdue' => $cpb->is_overdue,
-                'notes' => $request->notes,
-            ]);
-            
-            // Trigger event
-            event(new CPBHandover($cpb, $user, $receiver));
-            
-            DB::commit();
-            
-            return redirect()->route('dashboard')
-                           ->with('success', 'CPB berhasil diserahkan ke ' . $nextStatus);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal melakukan handover: ' . $e->getMessage());
-        }
     }
 
     public function release(CPB $cpb)
