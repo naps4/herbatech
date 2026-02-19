@@ -55,8 +55,8 @@
                     @if($cpb->is_overdue)
                         <div class="alert alert-danger shadow-sm mb-4">
                             <h5><i class="icon fas fa-exclamation-triangle"></i> PERHATIAN: BATCH OVERDUE</h5>
-                            <p class="mb-0">Batch ini telah melewati batas waktu ({{ $cpb->time_limit }} jam). 
-                            <strong>Sesuai standar industri, Anda wajib mencantumkan alasan keterlambatan pada kolom catatan.</strong></p>
+                            <p class="mb-0">Batch ini telah lebih dari {{ $cpb->time_limit }} jam. 
+                            <strong>Anda wajib mencantumkan alasan pada kolom catatan.</strong></p>
                         </div>
                     @endif
 

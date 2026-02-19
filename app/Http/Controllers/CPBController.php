@@ -27,7 +27,7 @@ class CPBController extends Controller
         $query = CPB::query();
         $cpbs = $query->latest()->paginate(7); 
         return view('cpb.index', compact('cpbs'));
-        
+
         if ($request->get('status') === 'active') {
             $query->where('status', '!=', 'released');
         } elseif ($request->get('status') === 'released') {
@@ -98,52 +98,53 @@ class CPBController extends Controller
         return view('cpb.index', compact('cpbs'));
     }
 
+    // CPBController.php
+
     public function reject(Request $request, CPB $cpb)
     {
+        // Validasi wewenang (menggunakan policy yang sudah ada)
         if (!Gate::allows('handover', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
 
         $previousStatus = $cpb->getPreviousDepartment();
+        
         if (!$previousStatus) {
             return back()->with('error', 'Batch sudah berada di tahap awal.');
         }
 
-        $request->validate(['rework_note' => 'required|string|max:1000']);
-
-        // HITUNG DURASI
-        $enteredAt = $cpb->entered_current_status_at;
-        $durationInMinutes = $enteredAt ? $enteredAt->diffInMinutes(now()) : 0;
-        $durationInHours = round($durationInMinutes / 60, 2);
+        $request->validate([
+            'rework_note' => 'required|string|max:1000',
+        ]);
 
         DB::beginTransaction();
         try {
             $oldStatus = $cpb->status;
             $cpb->update([
                 'status' => $previousStatus,
-                'current_department_id' => null,
-                'entered_current_status_at' => now(),
+                'current_department_id' => $receiverId, 
                 'is_rework' => true,
                 'rework_note' => $request->rework_note,
-                'is_overdue' => false,
+                'entered_current_status_at' => now(),
             ]);
-            
+
+            // Catat ke HandoverLog sebagai histori penolakan
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
                 'from_status' => $oldStatus,
                 'to_status' => $previousStatus, // Ganti dari $nextStatus ke $previousStatus
                 'handed_by' => auth()->id(),
+                'received_by' => $receiverId,
                 'handed_at' => now(),
-                'duration_in_hours' => $durationInHours, 
-                'was_overdue' => $cpb->is_overdue,
-                'notes' => 'REJECT: ' . $request->rework_note
+                'notes' => '[REJECT/REWORK]: ' . $request->rework_note,
             ]);
 
             DB::commit();
-            return redirect()->route('cpb.show', $cpb)->with('warning', 'Batch ditolak balik ke ' . $previousStatus);
+            return redirect()->route('cpb.show', $cpb)
+                        ->with('warning', 'Batch berhasil dikembalikan ke ' . $previousStatus);
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal memproses penolakan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
         }
     }
 
