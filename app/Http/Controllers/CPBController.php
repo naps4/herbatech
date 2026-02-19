@@ -25,6 +25,8 @@ class CPBController extends Controller
     {
         $user = auth()->user();
         $query = CPB::query();
+        $cpbs = $query->latest()->paginate(7); 
+        return view('cpb.index', compact('cpbs'));
         
         if ($request->get('status') === 'active') {
             $query->where('status', '!=', 'released');
@@ -43,6 +45,10 @@ class CPBController extends Controller
         if ($request->has('start_date')) {
             $query->whereDate('created_at', $request->start_date);
         }
+
+        if ($request->get('rework') === 'true') {
+        $query->where('is_rework', true);
+    }
         
         if ($request->has('batch_number')) {
             $query->where('batch_number', 'like', '%' . $request->batch_number . '%');
@@ -200,7 +206,7 @@ class CPBController extends Controller
             DB::commit();
             
             return redirect()->route('cpb.show', $cpb)
-                           ->with('success', 'CPB berhasil dibuat.');
+                        ->with('success', 'CPB berhasil dibuat.');
             
         } catch (\Exception $e) {
             DB::rollBack();

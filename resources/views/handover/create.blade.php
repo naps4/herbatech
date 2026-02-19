@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Serahkan CPB')
-@section('page-title', 'Serahkan CPB: ' . $cpb->batch_number)
+@section('page-title', 'Handover Batch: ' . $cpb->batch_number)
 
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
@@ -12,207 +12,174 @@
 
 @section('content')
 <div class="row">
-    <div class="col-md-6">
-        <div class="card card-success">
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="process-stepper d-flex justify-content-between align-items-center">
+                    @php
+                        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa_final', 'released'];
+                        $currentIndex = array_search($cpb->status, $flow);
+                    @endphp
+
+                    @foreach($flow as $index => $status)
+                        <div class="step-item text-center {{ $index <= $currentIndex ? 'active' : '' }} {{ $index == $currentIndex ? 'current' : '' }}">
+                            <div class="step-circle mx-auto">
+                                @if($index < $currentIndex)
+                                    <i class="fas fa-check"></i>
+                                @else
+                                    {{ $index + 1 }}
+                                @endif
+                            </div>
+                            <div class="step-label mt-2 small font-weight-bold">{{ strtoupper(str_replace('_', ' ', $status)) }}</div>
+                        </div>
+                        @if(!$loop->last)
+                            <div class="step-line"></div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card card-success card-outline shadow">
             <div class="card-header">
-                <h3 class="card-title">Form Serah Terima</h3>
+                <h3 class="card-title font-weight-bold">
+                    <i class="fas fa-exchange-alt mr-1 text-success"></i> Konfirmasi Pengiriman Dokumen
+                </h3>
             </div>
             
             <form method="POST" action="{{ route('handover.store', $cpb) }}">
                 @csrf
-                
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <h6><i class="icon fas fa-info-circle"></i> Informasi Handover</h6>
-                        <p class="mb-0">
-                            Anda akan menyerahkan CPB dari <strong>{{ ucfirst($cpb->status) }}</strong> 
-                            ke <strong>{{ ucfirst($nextStatus) }}</strong>
-                        </p>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>CPB yang Diserahkan</label>
-                        <div class="form-control" style="background-color: #f8f9fa;">
-                            <strong>{{ $cpb->batch_number }}</strong> - {{ $cpb->product_name }}
+                    @if($cpb->is_overdue)
+                        <div class="alert alert-danger shadow-sm mb-4">
+                            <h5><i class="icon fas fa-exclamation-triangle"></i> PERHATIAN: BATCH OVERDUE</h5>
+                            <p class="mb-0">Batch ini telah melewati batas waktu ({{ $cpb->time_limit }} jam). 
+                            <strong>Sesuai standar industri, Anda wajib mencantumkan alasan keterlambatan pada kolom catatan.</strong></p>
                         </div>
+                    @endif
+
+                    <div class="callout callout-success mb-4">
+                        <h5>Akan dikirim ke bagian: <strong>{{ strtoupper(str_replace('_', ' ', $nextStatus)) }}</strong></h5>
+                        <p class="mb-0 text-muted small">Pastikan dokumen fisik dan sistem sudah sesuai sebelum diserahkan.</p>
                     </div>
                     
                     <div class="form-group">
-                        <label>Status Saat Ini</label>
-                        <div class="form-control" style="background-color: #f8f9fa;">
-                            {!! $cpb->status_badge !!}
-                            <br>
-                            <small>Durasi: {{ $cpb->duration_in_current_status }} jam</small>
-                            @if($cpb->is_overdue)
-                                <br><span class="text-danger"><i class="fas fa-exclamation-triangle"></i> OVERDUE!</span>
-                            @endif
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="receiver_id">Penerima *</label>
-                        <select class="form-control @error('receiver_id') is-invalid @enderror" 
+                        <label for="receiver_id">Pilih Personel Penerima ({{ strtoupper(str_replace('_', ' ', $nextStatus)) }}) <span class="text-danger">*</span></label>
+                        <select class="form-control select2 @error('receiver_id') is-invalid @enderror" 
                                 id="receiver_id" name="receiver_id" required>
-                            <option value="">Pilih Penerima</option>
-                            @foreach($nextUsers as $receiver) {{-- GANTI $receivers MENJADI $nextUsers --}}
+                            <option value="">-- Pilih Nama Penerima --</option>
+                            @foreach($nextUsers as $receiver)
                                 <option value="{{ $receiver->id }}" {{ old('receiver_id') == $receiver->id ? 'selected' : '' }}>
-                                    {{ $receiver->name }} - {{ $receiver->department }}
+                                    {{ $receiver->name }} ({{ strtoupper($receiver->role) }})
                                 </option>
                             @endforeach
                         </select>
+                        @if(count($nextUsers) == 0)
+                            <span class="text-danger small"><i class="fas fa-info-circle"></i> Tidak ada user ditemukan dengan role "{{ $nextStatus }}". Silahkan hubungi Admin.</span>
+                        @endif
                         @error('receiver_id')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
+                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                         @enderror
-                        <small class="form-text text-muted">Pilih user yang akan menerima CPB di departemen {{ ucfirst($nextStatus) }}</small>
                     </div>
                     
                     <div class="form-group">
-                        <label for="notes">Catatan (opsional)</label>
+                        <label for="notes">
+                            Catatan Handover 
+                            @if($cpb->is_overdue) 
+                                <span class="text-danger font-weight-bold">* (Wajib diisi karena status Overdue)</span> 
+                            @else 
+                                <span class="text-muted small">(Opsional)</span>
+                            @endif
+                        </label>
                         <textarea class="form-control @error('notes') is-invalid @enderror" 
                                   id="notes" name="notes" rows="3" 
-                                  placeholder="Tambahkan catatan mengenai handover ini...">{{ old('notes') }}</textarea>
+                                  {{ $cpb->is_overdue ? 'required' : '' }}
+                                  placeholder="{{ $cpb->is_overdue ? 'Sebutkan alasan keterlambatan...' : 'Contoh: Dokumen lengkap, sisa bahan di gudang B...' }}">{{ old('notes') }}</textarea>
                         @error('notes')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
+                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                         @enderror
-                        <small class="form-text text-muted">Catatan akan tersimpan di log handover</small>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="p-3 bg-light border rounded mt-4">
                         <div class="custom-control custom-checkbox">
                             <input type="checkbox" class="custom-control-input" id="confirm_handover" required>
-                            <label class="custom-control-label" for="confirm_handover">
-                                Saya menyatakan bahwa CPB ini siap untuk diserahkan ke departemen berikutnya
+                            <label class="custom-control-label font-weight-normal" for="confirm_handover">
+                                Saya bertanggung jawab penuh atas kebenaran data CPB ini saat diserahkan ke bagian {{ strtoupper(str_replace('_', ' ', $nextStatus)) }}.
                             </label>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card-footer">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-forward"></i> Konfirmasi Serah Terima
+                <div class="card-footer bg-white text-right">
+                    <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-link text-muted mr-2">Batal</a>
+                    <button type="submit" class="btn btn-success px-4 shadow-sm">
+                        <i class="fas fa-paper-plane mr-1"></i> Serah Terima CPB
                     </button>
-                    <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-default">
-                        <i class="fas fa-times"></i> Batal
-                    </a>
                 </div>
             </form>
         </div>
     </div>
-    
-    <div class="col-md-6">
-        <!-- CPB Info -->
-        <div class="card">
+
+    <div class="col-md-5">
+        <div class="card card-outline card-info shadow-sm">
             <div class="card-header">
-                <h3 class="card-title">Detail CPB</h3>
+                <h3 class="card-title font-weight-bold">Ringkasan Batch</h3>
             </div>
-            <div class="card-body">
-                <dl>
-                    <dt>No. Batch:</dt>
-                    <dd>{{ $cpb->batch_number }}</dd>
-                    
-                    <dt>Jenis:</dt>
-                    <dd>{{ ucfirst($cpb->type) }}</dd>
-                    
-                    <dt>Produk:</dt>
-                    <dd>{{ $cpb->product_name }}</dd>
-                    
-                    <dt>Durasi Produksi:</dt>
-                    <dd>{{ $cpb->schedule_duration }} jam</dd>
-                    
-                    <dt>Dibuat Oleh:</dt>
-                    <dd>{{ $cpb->creator->name ?? 'N/A' }}</dd> {{-- TAMBAHKAN NULL CHECK --}}
-                    
-                    <dt>Tanggal Dibuat:</dt>
-                    <dd>{{ $cpb->created_at->format('d/m/Y H:i') }}</dd>
-                </dl>
-            </div>
-        </div>
-        
-        <!-- Time Tracking -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Tracking Waktu</h3>
-            </div>
-            <div class="card-body">
-                <div class="progress-group">
-                    <span class="progress-text">Durasi di {{ ucfirst($cpb->status) }}</span>
-                    <span class="float-right"><b>{{ $cpb->duration_in_current_status }}/{{ $cpb->time_limit }} jam</b></span>
-                    <div class="progress progress-sm">
-                        @php
-                            $percentage = min(100, ($cpb->duration_in_current_status / $cpb->time_limit) * 100);
-                            $color = $cpb->is_overdue ? 'danger' : ($percentage > 80 ? 'warning' : 'success');
-                        @endphp
-                        <div class="progress-bar bg-{{ $color }}" style="width: {{ $percentage }}%"></div>
-                    </div>
-                </div>
-                
-                <div class="callout callout-{{ $cpb->is_overdue ? 'danger' : 'info' }}">
-                    <h5>Status Waktu</h5>
-                    <p>
-                        @if($cpb->is_overdue)
-                            <i class="fas fa-exclamation-triangle text-danger"></i>
-                            CPB telah OVERDUE sejak 
-                            {{ $cpb->overdue_since ? $cpb->overdue_since->format('d/m/Y H:i') : 'N/A' }}
-                        @elseif($cpb->time_remaining < ($cpb->time_limit * 0.2))
-                            <i class="fas fa-exclamation-circle text-warning"></i>
-                            Waktu tersisa: {{ $cpb->time_remaining }} jam
-                        @else
-                            <i class="fas fa-check-circle text-success"></i>
-                            Waktu tersisa: {{ $cpb->time_remaining }} jam
-                        @endif
-                    </p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Handover Flow -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Alur Handover</h3>
-            </div>
-            <div class="card-body">
-                <div class="timeline timeline-inverse">
-                    @php
-                        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa_final', 'released'];
-                        $currentIndex = array_search($cpb->status, $flow);
-                        if ($currentIndex === false) $currentIndex = -1;
-                    @endphp
-                    
-                    @foreach($flow as $index => $status)
-                        <div class="time-label">
-                            @if($index == $currentIndex)
-                                <span class="bg-success">
-                                    <i class="fas fa-arrow-right"></i> {{ strtoupper($status) }}
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <th class="p-3 bg-light" style="width: 40%">No. Batch</th>
+                            <td class="p-3"><strong>{{ $cpb->batch_number }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="p-3 bg-light">Produk</th>
+                            <td class="p-3">{{ $cpb->product_name }}</td>
+                        </tr>
+                        <tr>
+                            <th class="p-3 bg-light">Durasi Proses</th>
+                            <td class="p-3">
+                                <span class="{{ $cpb->is_overdue ? 'text-danger font-weight-bold' : 'text-success' }}">
+                                    {{ $cpb->duration_in_current_status }} / {{ $cpb->time_limit }} jam
                                 </span>
-                            @elseif($index < $currentIndex)
-                                <span class="bg-secondary">
-                                    <i class="fas fa-check"></i> {{ strtoupper($status) }}
-                                </span>
-                            @else
-                                <span class="bg-light">
-                                    {{ strtoupper($status) }}
-                                </span>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
+                                @if($cpb->is_overdue)
+                                    <span class="badge badge-danger ml-1">OVERDUE</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="p-3 bg-light">Status Saat Ini</th>
+                            <td class="p-3">{!! $cpb->status_badge !!}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@push('scripts')
-<script>
-$(document).ready(function() {
-    // Auto-select first receiver if only one
-    if ($('#receiver_id option').length === 2) {
-        $('#receiver_id').val($('#receiver_id option:eq(1)').val());
+@push('styles')
+<style>
+    /* Stepper Styling */
+    .process-stepper { position: relative; }
+    .step-item { z-index: 2; flex: 1; }
+    .step-circle {
+        width: 32px; height: 32px; border-radius: 50%;
+        background-color: #e9ecef; color: #adb5bd;
+        display: flex; align-items: center; justify-content: center;
+        border: 2px solid #fff; box-shadow: 0 0 0 1px #dee2e6;
+        transition: all 0.3s; font-size: 0.8rem;
     }
-});
-</script>
+    .step-line { height: 2px; background-color: #dee2e6; flex: 1; margin-top: -24px; }
+    .step-item.active .step-circle { background-color: #28a745; color: white; box-shadow: 0 0 0 1px #28a745; }
+    .step-item.current .step-circle { 
+        background-color: #ffc107; color: #212529; 
+        box-shadow: 0 0 0 1px #ffc107; transform: scale(1.1); 
+    }
+    .step-item.active .step-label { color: #28a745; }
+    .step-item.current .step-label { color: #212529; }
+</style>
 @endpush

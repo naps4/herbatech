@@ -6,7 +6,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-
+use Illuminate\Pagination\Paginator;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Fix untuk MySQL versi lama
         Schema::defaultStringLength(191);
-        
+        Paginator::useBootstrap();
         // Share settings with all views
         try {
             $settings = \App\Models\Setting::all()->pluck('value', 'key');

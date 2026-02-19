@@ -18,17 +18,12 @@
                 <h3 class="card-title font-weight-bold">
                     <i class="fas fa-bolt mr-1 text-yellow"></i> Quick Actions
                 </h3>
-                <div class="card-tools">
-                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                </div>
             </div>
             <div class="card-body">
                 <div class="row">
                     @php $user = auth()->user(); @endphp
 
-                    {{-- 1. Buat CPB (Hanya RND/Admin) --}}
+                    {{-- 1. Buat CPB --}}
                     @can('create', App\Models\CPB::class)
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
                         <a href="{{ route('cpb.create') }}" class="btn btn-app bg-success d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
@@ -37,7 +32,7 @@
                     </div>
                     @endcan
 
-                    {{-- 2. Rework (Gaya Identik dengan Overdue) --}}
+                    {{-- 2. Rework - Filter Rework=true --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
                         <a href="{{ route('cpb.index', ['rework' => 'true', 'status' => 'all']) }}" 
                            class="btn btn-app bg-warning d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
@@ -50,12 +45,10 @@
                                 }
                                 $reworkCount = $reworkQuery->count();
                             @endphp
-                            
                             @if($reworkCount > 0)
                                 <span class="badge badge-light border text-dark">{{ $reworkCount }}</span>
                             @endif
-                            <i class="fas fa-undo text-dark"></i> 
-                            <span class="text-dark font-weight-bold">Rework</span>
+                            <i class="fas fa-undo text-dark"></i> <span class="text-dark font-weight-bold">Rework</span>
                         </a>
                     </div>
 
@@ -72,12 +65,10 @@
                                 }
                                 $overdueCount = $overdueQuery->count();
                             @endphp
-                            
                             @if($overdueCount > 0)
                                 <span class="badge badge-light border text-danger">{{ $overdueCount }}</span>
                             @endif
-                            <i class="fas fa-exclamation-triangle"></i> 
-                            <span class="font-weight-bold">Overdue</span>
+                            <i class="fas fa-exclamation-triangle"></i> <span class="font-weight-bold">Overdue</span>
                         </a>
                     </div>
 
@@ -109,7 +100,7 @@
                 <h3 class="card-title">CPB Aktif</h3>
                 <div class="card-tools">
                     <div class="input-group input-group-sm" style="width: 250px;">
-                        <input type="text" id="search-cpb" class="form-control float-right" placeholder="Cari CPB...">
+                        <input type="text" id="search-cpb" class="form-control float-right" placeholder="Cari No. Batch...">
                         <div class="input-group-append">
                             <button type="button" class="btn btn-default" id="search-btn"><i class="fas fa-search"></i></button>
                         </div>
@@ -127,14 +118,13 @@
                                 <th>Lokasi</th>
                                 <th>Durasi</th>
                                 <th>Status Waktu</th>
-                                <th>Actions</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($cpbs as $cpb)
                                 <tr class="{{ $cpb->is_overdue ? 'table-danger' : ($cpb->is_rework ? 'table-warning' : '') }} cpb-row" 
-                                    data-batch="{{ strtolower($cpb->batch_number) }}"
-                                    data-product="{{ strtolower($cpb->product_name) }}">
+                                    data-batch="{{ strtolower($cpb->batch_number) }}">
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <strong>{{ $cpb->batch_number }}</strong>
@@ -168,16 +158,16 @@
                     </table>
                 </div>
             </div>
-            <div class="card-footer">
+            <div class="card-footer bg-white">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div><small class="text-muted">Menampilkan {{ $cpbs->count() }} dari {{ $cpbs->total() }} CPB</small></div>
+                    <div><small class="text-muted">Menampilkan {{ $cpbs->count() }} CPB</small></div>
                     <div>{{ $cpbs->appends(request()->query())->links() }}</div>
                     <div class="btn-group">
                         <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown">
                             <i class="fas fa-download"></i> Export
                         </button>
                         <div class="dropdown-menu dropdown-menu-right">
-                            <a class="dropdown-item" href="{{ route('reports.export') }}?type=active"><i class="fas fa-file-excel text-success"></i> Excel</a>
+                            <a class="dropdown-item" href="{{ route('reports.export', ['type' => 'active']) }}"><i class="fas fa-file-excel text-success"></i> Excel</a>
                             <a class="dropdown-item" href="{{ route('cpb.export-pdf') }}"><i class="fas fa-file-pdf text-danger"></i> PDF</a>
                         </div>
                     </div>
@@ -201,12 +191,11 @@
                             <i class="fas fa-exchange-alt bg-blue"></i>
                             <div class="timeline-item">
                                 <span class="time"><i class="fas fa-clock"></i> {{ $handover->handed_at->format('H:i') }}</span>
-                                <h3 class="timeline-header"><strong>{{ $handover->sender->name }}</strong> → <strong>{{ $handover->receiver->name ?? 'Belum diterima' }}</strong></h3>
+                                <h3 class="timeline-header"><strong>{{ $handover->sender->name }}</strong> → <strong>{{ $handover->receiver->name ?? 'System' }}</strong></h3>
                                 <div class="timeline-body">{{ $handover->cpb->batch_number }} - {{ $handover->from_status }} → {{ $handover->to_status }}</div>
                             </div>
                         </div>
                     @endforeach
-                    <div><i class="fas fa-clock bg-gray"></i></div>
                 </div>
             </div>
         </div>
@@ -216,7 +205,7 @@
         <div class="card">
             <div class="card-header"><h3 class="card-title">Statistik Departemen</h3></div>
             <div class="card-body">
-                <canvas id="departmentChart" height="150"></canvas>
+                <canvas id="departmentChart" height="200"></canvas>
             </div>
         </div>
     </div>
@@ -225,7 +214,7 @@
 
 @push('styles')
 <style>
-    /* Match Parent & Simetris */
+    /* CSS Match Parent & 5 Columns Desktop */
     .col-lg-2-4 { position: relative; width: 100%; padding-right: 7.5px; padding-left: 7.5px; flex: 0 0 20%; max-width: 20%; }
     @media (max-width: 992px) { .col-lg-2-4 { flex: 0 0 33.33%; max-width: 33.33%; } }
     @media (max-width: 576px) { .col-lg-2-4 { flex: 0 0 50%; max-width: 50%; } }
@@ -255,20 +244,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 $(document).ready(function() {
-    // Live Search
+    // Live Search Table
     $('#search-cpb').on('keyup', function() {
         const term = $(this).val().toLowerCase();
         $('.cpb-row').each(function() {
-            const batch = $(this).data('batch');
-            $(this).toggle(batch.includes(term));
+            $(this).toggle($(this).data('batch').includes(term));
         });
     });
 
-    // Chart
+    // Department Chart
     @php
         $stats = ['rnd','qa','ppic','wh','produksi','qc','qa_final','released'];
-        $data = [];
-        foreach($stats as $s) { $data[] = \App\Models\CPB::where('status', $s)->count(); }
+        $chartData = [];
+        foreach($stats as $s) { $chartData[] = \App\Models\CPB::where('status', $s)->count(); }
     @endphp
     const ctx = document.getElementById('departmentChart').getContext('2d');
     new Chart(ctx, {
@@ -277,7 +265,7 @@ $(document).ready(function() {
             labels: ['RND', 'QA', 'PPIC', 'WH', 'Produksi', 'QC', 'QA Final', 'Released'],
             datasets: [{
                 label: 'Jumlah CPB',
-                data: @json($data),
+                data: @json($chartData),
                 backgroundColor: ['#007bff', '#17a2b8', '#6c757d', '#343a40', '#ffc107', '#17a2b8', '#28a745', '#20c997'],
                 borderWidth: 1
             }]

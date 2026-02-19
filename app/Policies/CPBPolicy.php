@@ -6,187 +6,181 @@ namespace App\Policies;
 use App\Models\User;
 use App\Models\CPB;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Support\Facades\Log;
 
 class CPBPolicy
 {
-     public function viewAny(User $user): bool
+    /**
+     * Tentukan apakah user dapat melihat daftar CPB.
+     */
+    public function viewAny(User $user): bool
     {
-        Log::info('CPBPolicy viewAny check', [
-            'user_id' => $user->id,
-            'user_role' => $user->role,
-            'result' => true
-        ]);
         return true;
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Tentukan apakah user dapat melihat detail CPB tertentu.
      */
     public function view(User $user, CPB $cpb): bool
     {
-        Log::info('CPBPolicy view check START', [
-            'user_id' => $user->id,
-            'user_role' => $user->role,
-            'cpb_id' => $cpb->id,
-            'cpb_status' => $cpb->status,
-            'cpb_created_by' => $cpb->created_by,
-            'cpb_current_dept' => $cpb->current_department_id,
-        ]);
-        
-        // Super admin dan QA bisa melihat semua
-        if ($user->isSuperAdmin() || $user->isQA()|| $user->isRND()) {
-            Log::info('CPBPolicy view check: SuperAdmin or QA or RND - ALLOWED');
+        // Super admin, QA, dan RND memiliki akses penuh untuk memantau semua batch
+        if ($user->role === 'superadmin' || $user->role === 'qa' || $user->role === 'rnd') {
             return true;
         }
         
-        // User bisa melihat CPB yang mereka buat
+        // User dapat melihat CPB yang mereka buat sendiri
         if ($cpb->created_by === $user->id) {
-            Log::info('CPBPolicy view check: Creator - ALLOWED');
             return true;
         }
         
-        // User bisa melihat CPB di departemen mereka saat ini
+        // User dapat melihat CPB yang sedang aktif di departemen/tangan mereka
         if ($cpb->current_department_id === $user->id) {
-            Log::info('CPBPolicy view check: Current Department - ALLOWED');
             return true;
         }
         
-        // User bisa melihat CPB yang sudah lewat departemen mereka
-        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa_final', 'released'];
+        // Aturan riwayat: User dapat melihat CPB yang statusnya sudah melewati departemen mereka
+        // Alur menggunakan 7 role sesuai keterbatasan database
+        $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa', 'released'];
         $userIndex = array_search($user->role, $flow);
         $cpbIndex = array_search($cpb->status, $flow);
         
-        $result = $userIndex !== false && $cpbIndex !== false && $cpbIndex <= $userIndex;
-        
-        Log::info('CPBPolicy view check FINAL', [
-            'user_role' => $user->role,
-            'cpb_status' => $cpb->status,
-            'user_index' => $userIndex,
-            'cpb_index' => $cpbIndex,
-            'result' => $result
-        ]);
-        
-        return $result;
+        return $userIndex !== false && $cpbIndex !== false && $cpbIndex <= $userIndex;
     }
 
     /**
-     * Determine whether the user can create models.
+     * Tentukan apakah user dapat membuat CPB baru.
      */
     public function create(User $user): bool
     {
-        // Hanya RND dan super admin yang bisa membuat CPB
-        return $user->isRND() || $user->isSuperAdmin();
+        // Hanya departemen RND atau Super Admin yang diizinkan memulai batch baru
+        return $user->role === 'rnd' || $user->role === 'superadmin';
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Tentukan apakah user dapat memperbarui data CPB.
      */
     public function update(User $user, CPB $cpb): bool
     {
-        if ($user->isRND() && $cpb->status === 'rnd') {
-        return $cpb->created_by === $user->id || $user->isSuperAdmin();
+        // Update hanya diizinkan di tahap RND oleh pembuatnya atau Admin
+        if ($user->role === 'rnd' && $cpb->status === 'rnd') {
+            return $cpb->created_by === $user->id || $user->role === 'superadmin';
         }
         return false;
     }
 
+    /**
+     * Tentukan apakah user dapat menghapus CPB.
+     */
     public function delete(User $user, CPB $cpb): bool
     {
-        // Hanya super admin yang bisa delete
-        return $user->isSuperAdmin();
+        return $user->role === 'superadmin';
     }
 
     /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, CPB $cpb): bool
-    {
-        return $user->isSuperAdmin();
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, CPB $cpb): bool
-    {
-        return $user->isSuperAdmin();
-    }
-
-    /**
-     * Determine whether the user can handover the CPB.
+     * Logika Inti Handover (Serah Terima Dokumen)
      */
     public function handover(User $user, CPB $cpb): bool
     {
-        // 1. Super admin bisa handover semua CPB ✅
-        if ($user->isSuperAdmin()) {
+        // 1. Super admin selalu diizinkan untuk bypass alur jika diperlukan
+        if ($user->role === 'superadmin') {
             return true;
         }
         
-        // 2. User harus di departemen yang sesuai dengan status CPB
+        // 2. Keamanan: User haruslah pemegang dokumen saat ini (Current Department ID)
         if ($cpb->current_department_id !== $user->id) {
             return false;
         }
         
-        // 3. Check if user's role matches current status
+        // 3. Keamanan: Role user harus sesuai dengan status sistem CPB saat ini
         if ($cpb->status !== $user->role) {
             return false;
         }
         
-        // 4. Check if CPB has next department
+        // 4. Ambil departemen tujuan berdasarkan logika workflow di Model
         $nextStatus = $cpb->getNextDepartment();
         
-        // Pastikan CPB belum released dan ada next department
-        if (empty($nextStatus) || $nextStatus === 'released') {
+        // Pastikan bukan status akhir yang sudah tidak bisa dipindahkan
+        if (empty($nextStatus) || $cpb->status === 'released') {
             return false;
         }
+
+        /**
+         * LOGIKA BEST PRACTICE INDUSTRI (Checkpoint QC)
+         * Mengecek apakah batch ini sudah pernah melewati departemen QC sebelumnya.
+         */
+        $hasPassedQC = $cpb->handoverLogs()->where('from_status', 'qc')->exists();
         
-        // 5. QA bisa handover dari QA ke PPIC
-        if ($user->role === 'qa' && $cpb->status === 'qa') {
+        // --- VALIDASI ALUR KERJA ---
+
+        // A. Alur RND -> QA (Review Dokumen Awal)
+        if ($user->role === 'rnd' && $cpb->status === 'rnd') {
+            return $nextStatus === 'qa';
+        }
+
+        // B. Alur QA (Awal) -> PPIC
+        // QA hanya boleh mengirim ke PPIC jika belum pernah melewati QC (tahap awal)
+        if ($user->role === 'qa' && $cpb->status === 'qa' && !$hasPassedQC) {
             return $nextStatus === 'ppic';
         }
         
-        // 6. PPIC bisa handover ke WH
+        // C. Alur PPIC -> Warehouse (WH)
         if ($user->role === 'ppic' && $cpb->status === 'ppic') {
             return $nextStatus === 'wh';
         }
         
-        // 7. WH bisa handover ke Produksi
+        // D. Alur Warehouse -> Produksi
         if ($user->role === 'wh' && $cpb->status === 'wh') {
             return $nextStatus === 'produksi';
         }
         
-        // 8. Produksi bisa handover ke QC
+        // E. Alur Produksi -> QC
         if ($user->role === 'produksi' && $cpb->status === 'produksi') {
             return $nextStatus === 'qc';
         }
         
-        // 9. QC bisa handover ke QA Final
+        // F. Alur QC -> QA (Final Review)
         if ($user->role === 'qc' && $cpb->status === 'qc') {
-            return $nextStatus === 'qa_final';
-        }
-        
-        // 10. RND bisa handover ke QA (awal)
-        if ($user->role === 'rnd' && $cpb->status === 'rnd') {
             return $nextStatus === 'qa';
+        }
+
+        // G. Alur QA (Final) -> Released
+        // QA hanya boleh mengirim ke Released (selesai) jika sudah melewati QC
+        if ($user->role === 'qa' && $cpb->status === 'qa' && $hasPassedQC) {
+            return $nextStatus === 'released';
         }
         
         return false;
     }
 
     /**
-     * Determine whether the user can release the CPB.
+     * Tentukan apakah user dapat melakukan pelulusan produk (Release Product).
      */
     public function release(User $user, CPB $cpb): bool
     {
-        // Hanya QA dan super admin yang bisa release
-        return ($user->role === 'qa' || $user->isSuperAdmin()) && $cpb->status === 'qa_final';
+        // 1. Hanya personil QA atau Superadmin yang memiliki wewenang rilis
+        if (!($user->role === 'qa' || $user->role === 'superadmin')) {
+            return false;
+        }
+
+        // 2. Status dokumen harus berada di departemen QA
+        if ($cpb->status !== 'qa') {
+            return false;
+        }
+
+        /**
+         * Produk TIDAK BOLEH dirilis jika belum pernah melalui QC.
+         * Ini mencegah QA menekan tombol 'Release' saat tahap review awal (setelah RND).
+         */
+        $hasPassedQC = $cpb->handoverLogs()->where('from_status', 'qc')->exists();
+
+        return $hasPassedQC;
     }
 
     /**
-     * Determine whether the user can receive handover.
+     * Tentukan apakah user dapat melihat/menerima notifikasi handover.
      */
     public function receive(User $user, CPB $cpb): bool
     {
-        // User bisa menerima jika CPB akan masuk ke departemen mereka
         $nextStatus = $cpb->getNextDepartment();
         return $nextStatus === $user->role;
     }
