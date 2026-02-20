@@ -1,20 +1,40 @@
 @extends('layouts.app')
 
-@section('title')
-@section('page-title')
-@endsection
+@section('title', '') 
+@section('page-title', '')
+@section('breadcrumb', '')
+
+<!-- {{-- 2. Fungsi Helper (Tetap di sini, tapi pastikan variabel di dalam loop aman) --}}
+@php
+if (!function_exists('calculatePerformanceScore')) {
+    function calculatePerformanceScore($dept) {
+        $score = 100;
+        $overdueRate = $dept->total_handovers > 0 ? ($dept->overdue_count / $dept->total_handovers) * 100 : 0;
+        if ($overdueRate > 20) $score -= 40;
+        elseif ($overdueRate > 10) $score -= 20;
+        return max(0, $score);
+    }
+}
+
+if (!function_exists('calculateUserPerformanceScore')) {
+    function calculateUserPerformanceScore($userPerf) {
+        $score = 100;
+        // Gunakan Null Coalescing agar tidak error jika data kosong
+        $totalHandovers = $userPerf->total_handovers_count ?? $userPerf->total_handovers ?? 0;
+        if ($totalHandovers >= 10) $score += 10;
+        if (($userPerf->avg_duration ?? 0) > 24) $score -= 20;
+        return max(0, min(100, $score));
+    }
+}
+@endphp -->
 
 @section('content')
+{{-- Filter Card --}}
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Filter Performance</h3>
-                <div class="card-tools">
-                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                </div>
             </div>
             <div class="card-body">
                 <form method="GET" action="{{ route('reports.performance') }}">
@@ -22,15 +42,13 @@
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label for="start_date">Tanggal Mulai</label>
-                                <input type="date" name="start_date" id="start_date" 
-                                       class="form-control" value="{{ request('start_date') }}">
+                                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ request('start_date') }}">
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label for="end_date">Tanggal Akhir</label>
-                                <input type="date" name="end_date" id="end_date" 
-                                       class="form-control" value="{{ request('end_date') }}">
+                                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ request('end_date') }}">
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -57,15 +75,9 @@
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter"></i> Filter
-                            </button>
-                            <a href="{{ route('reports.performance') }}" class="btn btn-default">
-                                <i class="fas fa-sync-alt"></i> Reset
-                            </a>
-                            <button type="button" class="btn btn-success float-right" onclick="exportPerformance()">
-                                <i class="fas fa-file-excel"></i> Export Excel
-                            </button>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+                            <a href="{{ route('reports.performance') }}" class="btn btn-default"><i class="fas fa-sync-alt"></i> Reset</a>
+                            <button type="button" class="btn btn-success float-right" onclick="exportPerformance()"><i class="fas fa-file-excel"></i> Export Excel</button>
                         </div>
                     </div>
                 </form>
@@ -74,6 +86,7 @@
     </div>
 </div>
 
+{{-- Summary & Chart --}}
 <div class="row">
     <div class="col-lg-8">
         <div class="card">
@@ -83,16 +96,11 @@
             </div>
         </div>
     </div>
-    
     <div class="col-lg-4">
         <div class="small-box bg-info">
-            <div class="inner">
-                <h3>{{ $summary['total_handovers'] ?? 0 }}</h3>
-                <p>Total Handover</p>
-            </div>
+            <div class="inner"><h3>{{ $summary['total_handovers'] ?? 0 }}</h3><p>Total Handover</p></div>
             <div class="icon"><i class="fas fa-exchange-alt"></i></div>
         </div>
-        
         <div class="small-box bg-success">
             <div class="inner">
                 <h3>
@@ -106,114 +114,99 @@
             </div>
             <div class="icon"><i class="fas fa-clock"></i></div>
         </div>
-        
         <div class="small-box bg-danger">
-            <div class="inner">
-                <h3>{{ $summary['overdue_count'] ?? 0 }}</h3>
-                <p>Total Overdue</p>
-            </div>
+            <div class="inner"><h3>{{ $summary['overdue_count'] ?? 0 }}</h3><p>Total Overdue</p></div>
             <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
         </div>
     </div>
 </div>
 
+{{-- Table Detail --}}
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header"><h3 class="card-title">Detail Performance per Departemen</h3></div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Departemen</th>
-                                <th>Jumlah CPB</th>
-                                <th>Avg Durasi</th>
-                                <th>Tercepat</th>
-                                <th>Terlama</th>
-                                <th>Overdue</th>
-                                <th>Overdue Rate</th>
-                                <th>Score</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($performance as $dept)
-                                <tr>
-                                    <td><strong>{{ strtoupper($dept->from_status) }}</strong></td>
-                                    <td class="text-right">{{ $dept->total_handovers }}</td>
-                                    <td class="text-right">
-                                        @if($dept->avg_duration < 1) {{ round($dept->avg_duration * 60) }} m @else {{ round($dept->avg_duration, 1) }} j @endif
-                                    </td>
-                                    <td class="text-right">
-                                        @if($dept->min_duration < 1) {{ round($dept->min_duration * 60) }} m @else {{ round($dept->min_duration, 1) }} j @endif
-                                    </td>
-                                    <td class="text-right">
-                                        @if($dept->max_duration < 1) {{ round($dept->max_duration * 60) }} m @else {{ round($dept->max_duration, 1) }} j @endif
-                                    </td>
-                                    <td class="text-right text-danger">{{ $dept->overdue_count }}</td>
-                                    <td class="text-right">
-                                        @php $overdueRate = $dept->overdue_percentage ?? 0; @endphp
-                                        <span class="badge {{ $overdueRate > 20 ? 'bg-danger' : ($overdueRate > 10 ? 'bg-warning' : 'bg-success') }}">
-                                            {{ round($overdueRate, 1) }}%
-                                        </span>
-                                    </td>
-                                    <td class="text-right">
-                                        @php $score = calculatePerformanceScore($dept); @endphp
-                                        <span class="badge {{ $score >= 80 ? 'bg-success' : ($score >= 60 ? 'bg-warning' : 'bg-danger') }}">
-                                            {{ $score }}%
-                                        </span>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            <div class="card-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Departemen</th>
+                            <th>Jumlah CPB</th>
+                            <th>Avg Durasi</th>
+                            <th>Overdue Rate</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($performance as $dept)
+                        <tr>
+                            <td><strong>{{ strtoupper($dept->from_status) }}</strong></td>
+                            <td class="text-right">{{ $dept->total_handovers }}</td>
+                            <td class="text-right">@if($dept->avg_duration < 1) {{ round($dept->avg_duration * 60) }} m @else {{ round($dept->avg_duration, 1) }} j @endif</td>
+                            <td class="text-right">
+                                @php $oRate = $dept->overdue_percentage ?? 0; @endphp
+                                <span class="badge {{ $oRate > 20 ? 'bg-danger' : ($oRate > 10 ? 'bg-warning' : 'bg-success') }}">{{ round($oRate, 1) }}%</span>
+                            </td>
+                            <td class="text-right">
+                                @php $score = calculatePerformanceScore($dept); @endphp
+                                <span class="badge {{ $score >= 80 ? 'bg-success' : ($score >= 60 ? 'bg-warning' : 'bg-danger') }}">{{ $score }}%</span>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
+{{-- Top Performers --}}
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header"><h3 class="card-title">Top Performers</h3></div>
             <div class="card-body">
                 <div class="row">
-                    @foreach($userPerformance->take(3) as $userPerf)
-                    <div class="col-md-4">
-                        <div class="card card-widget widget-user">
-                            <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">{{ $userPerf->sender->name ?? 'User' }}</h3>
-                                <h5 class="widget-user-desc">{{ strtoupper($userPerf->sender->role ?? 'Staff') }}</h5>
-                            </div>
-                            <div class="card-footer">
-                                <div class="row">
-                                    <div class="col-sm-4 border-right">
-                                        <div class="description-block">
-                                            <h5 class="description-header">{{ $userPerf->total_handovers_count }}</h5>
-                                            <span class="description-text">Handover</span>
+                    {{-- Pastikan variabel $userPerformance ada sebelum di-loop --}}
+                    @if(isset($userPerformance) && $userPerformance->count() > 0)
+                        @foreach($userPerformance->take(3) as $userPerf)
+                        <div class="col-md-4">
+                            <div class="card card-widget widget-user">
+                                <div class="widget-user-header bg-info">
+                                    <h3 class="widget-user-username">{{ $userPerf->sender->name ?? 'User' }}</h3>
+                                    <h5 class="widget-user-desc">{{ strtoupper($userPerf->sender->role ?? 'Staff') }}</h5>
+                                </div>
+                                <div class="card-footer">
+                                    <div class="row">
+                                        <div class="col-sm-4 border-right">
+                                            <div class="description-block">
+                                                <h5 class="description-header">{{ $userPerf->total_handovers_count ?? 0 }}</h5>
+                                                <span class="description-text">Handover</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-sm-4 border-right">
-                                        <div class="description-block">
-                                            <h5 class="description-header">
-                                                @if($userPerf->avg_duration < 1) {{ round($userPerf->avg_duration * 60) }}m @else {{ round($userPerf->avg_duration, 1) }}j @endif
-                                            </h5>
-                                            <span class="description-text">Avg</span>
+                                        <div class="col-sm-4 border-right">
+                                            <div class="description-block">
+                                                <h5 class="description-header">
+                                                    @if(($userPerf->avg_duration ?? 0) < 1) {{ round(($userPerf->avg_duration ?? 0) * 60) }}m @else {{ round(($userPerf->avg_duration ?? 0), 1) }}j @endif
+                                                </h5>
+                                                <span class="description-text">Avg</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-sm-4">
-                                        <div class="description-block">
-                                            @php $uScore = calculateUserPerformanceScore($userPerf); @endphp
-                                            <h5 class="description-header">{{ $uScore }}%</h5>
-                                            <span class="description-text">Score</span>
+                                        <div class="col-sm-4">
+                                            <div class="description-block">
+                                                @php $uScore = calculateUserPerformanceScore($userPerf); @endphp
+                                                <h5 class="description-header">{{ $uScore }}%</h5>
+                                                <span class="description-text">Score</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    @endforeach
+                        @endforeach
+                    @else
+                        <div class="col-12 text-center text-muted"><p>Belum ada data performer.</p></div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -226,7 +219,6 @@
 <script>
 $(document).ready(function() {
     const ctx = document.getElementById('performanceChart').getContext('2d');
-    
     const formatTimeLabel = (val) => {
         if (val === 0) return '0';
         return val < 1 ? Math.round(val * 60) + 'm' : val.toFixed(1) + 'j';
@@ -259,30 +251,8 @@ $(document).ready(function() {
         options: {
             responsive: true,
             scales: {
-                y: { 
-                    beginAtZero: true, 
-                    title: { display: true, text: 'Waktu Pengerjaan' },
-                    ticks: { callback: (v) => formatTimeLabel(v) } 
-                },
-                y1: { 
-                    position: 'right', 
-                    title: { display: true, text: 'Overdue %' }, 
-                    min: 0, max: 100, 
-                    grid: { drawOnChartArea: false },
-                    ticks: { callback: (v) => v + '%' }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            let val = context.parsed.y;
-                            if (context.datasetIndex === 0) return label + ': ' + (val < 1 ? Math.round(val * 60) + ' Menit' : val.toFixed(1) + ' Jam');
-                            return label + ': ' + val + '%';
-                        }
-                    }
-                }
+                y: { beginAtZero: true, ticks: { callback: (v) => formatTimeLabel(v) } },
+                y1: { position: 'right', min: 0, max: 100, ticks: { callback: (v) => v + '%' } }
             }
         }
     });
@@ -295,20 +265,3 @@ function exportPerformance() {
 }
 </script>
 @endpush
-
-@php
-function calculatePerformanceScore($dept) {
-    $score = 100;
-    $overdueRate = $dept->total_handovers > 0 ? ($dept->overdue_count / $dept->total_handovers) * 100 : 0;
-    if ($overdueRate > 20) $score -= 40;
-    elseif ($overdueRate > 10) $score -= 20;
-    return max(0, $score);
-}
-
-function calculateUserPerformanceScore($userPerf) {
-    $score = 100;
-    if ($userPerf->total_handovers_count >= 10) $score += 10;
-    if ($userPerf->avg_duration > 24) $score -= 20;
-    return max(0, min(100, $score));
-}
-@endphp

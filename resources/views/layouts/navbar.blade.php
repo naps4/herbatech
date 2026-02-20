@@ -19,7 +19,7 @@
                 @auth
                     <li class="nav-item mx-lg-4">
                         <a href="{{ route('dashboard') }}" class="nav-link px-3 {{ request()->routeIs('dashboard') ? 'active font-weight-bold' : '' }}">
-                            <i class="fas fa-home mr-1 small"></i> Dashboard
+                            <i class="fas fa-seedling"></i> Dashboard
                         </a>
                     </li>
 

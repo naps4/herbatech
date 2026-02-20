@@ -1,8 +1,7 @@
 @extends('layouts.app')
 
 @section('page-title')
-
-    
+    {{-- Bagian ini dikosongkan agar tidak muncul double header di atas card --}}
 @endsection
 
 @section('content')
@@ -104,7 +103,7 @@
                                 <th>Produk</th>
                                 <th>Status Tahap</th>
                                 <th>Pemegang Saat Ini</th>
-                                <th>Running Time</th>
+                                <th>Status Waktu</th>
                                 <th class="text-right pr-4">Aksi</th>
                             </tr>
                         </thead>
@@ -126,9 +125,13 @@
                                         {{ $cpb->currentDepartment->name ?? '-' }}
                                     </td>
                                     <td class="align-middle">
-                                        <span class="badge bg-light border {{ $cpb->is_overdue ? 'text-danger border-danger' : 'text-muted' }}">
-                                            <i class="far fa-clock mr-1"></i> {{ $cpb->formatted_duration }}
-                                        </span>
+                                        @if($cpb->is_overdue)
+                                            <span class="badge badge-danger shadow-xs">
+                                                <i class="fas fa-clock mr-1"></i> OVERDUE
+                                            </span>
+                                        @else
+                                            <span class="badge badge-success shadow-xs">ON TIME</span>
+                                        @endif
                                     </td>
                                     <td class="text-right pr-4 align-middle">
                                         <div class="btn-group">
@@ -144,7 +147,7 @@
                                                 </a>
                                             @endif
 
-                                            {{-- 3. Handover (Dinamis: Disembunyikan jika tahap rilis) --}}
+                                            {{-- 3. Handover --}}
                                             @can('handover', $cpb)
                                                 @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
                                                 <a href="{{ route('handover.create', $cpb) }}" class="btn btn-sm btn-outline-success" title="Serah Terima CPB">
@@ -153,14 +156,14 @@
                                                 @endif
                                             @endcan
 
-                                            {{-- 4. Tombol Release: Muncul HANYA jika status QA Final (setelah QC) --}}
+                                            {{-- 4. Release --}}
                                             @if($cpb->status === 'qa' && $cpb->is_final_qa)
                                                 @can('release', $cpb)
                                                     <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="d-inline ms-1">
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm btn-primary" 
                                                                 title="Luluskan Produk (Release)" 
-                                                                onclick="return confirm('Apakah Anda yakin ingin meluluskan (Release) batch {{ $cpb->batch_number }}?')">
+                                                                onclick="return confirm('Konfirmasi Release Batch {{ $cpb->batch_number }}?')">
                                                             <i class="fas fa-check-double"></i>
                                                         </button>
                                                     </form>
@@ -181,16 +184,15 @@
                     </table>
                 </div>
             </div>
-            {{-- Footer Pagination (Tombol Next/Previous) --}}
+            {{-- Footer Pagination --}}
             <div class="card-footer bg-white border-top">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <p class="text-muted small mb-0">
-                            Menampilkan <strong>{{ $cpbs->firstItem() ?? 0 }}</strong> sampai <strong>{{ $cpbs->lastItem() ?? 0 }}</strong> dari <strong>{{ $cpbs->total() }}</strong> data
+                            Menampilkan <strong>{{ $cpbs->firstItem() ?? 0 }}</strong> - <strong>{{ $cpbs->lastItem() ?? 0 }}</strong> dari <strong>{{ $cpbs->total() }}</strong> data
                         </p>
                     </div>
                     <div>
-                        {{-- Navigasi Pagination dengan preserve filter query string --}}
                         {{ $cpbs->appends(request()->query())->links() }}
                     </div>
                 </div>
@@ -204,7 +206,8 @@
 <style>
     .pagination { margin-bottom: 0; }
     .page-item.active .page-link { background-color: #007bff; border-color: #007bff; }
-    .table td, .table th { vertical-align: middle; }
+    .table td, .table th { vertical-align: middle; white-space: nowrap; }
     .opacity-20 { opacity: 0.2; }
+    .shadow-xs { box-shadow: 0 1px 2px rgba(0,0,0,0.075); }
 </style>
 @endpush

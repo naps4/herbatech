@@ -1,13 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Buat CPB Baru')
-@section('page-title', 'Buat CPB Baru')
+{{-- Bagian ini dikosongkan atau dihapus agar tidak muncul --}}
+@section('title', '') 
+@section('page-title', '')
+@section('breadcrumb', '')
 
-@section('breadcrumb')
-    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item"><a href="{{ route('cpb.index') }}">CPB</a></li>
-    <li class="breadcrumb-item active">Buat Baru</li>
-@endsection
+
 
 @section('content')
 <div class="container-fluid">

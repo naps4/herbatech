@@ -42,6 +42,14 @@ class CPBController extends Controller
             $query->where('batch_number', 'like', '%' . $request->batch_number . '%');
         }
 
+        //parameter untuk pengecekan overdue
+        if ($request->has('overdue') && $request->overdue == 'true') {
+            $query->where('is_overdue', true);
+        }
+    
+        $cpbs = $query->latest()->paginate(10);
+        return view('cpb.index', compact('cpbs'));
+
         // Role-based filtering
         if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {

@@ -91,24 +91,49 @@ class ReportController extends Controller
             $baseQuery->whereDate('handed_at', '<=', $request->end_date);
         }
 
+        // 1. Data untuk Tabel & Grafik (Per Departemen)
         $performance = (clone $baseQuery)
             ->where('from_status', '!=', 'created') 
             ->selectRaw('
                 from_status,
                 COUNT(*) as total_handovers,
                 AVG(duration_in_hours) as avg_duration,
-                SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) as overdue_count
+                MIN(duration_in_hours) as min_duration,
+                MAX(duration_in_hours) as max_duration,
+                SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) as overdue_count,
+                (SUM(CASE WHEN was_overdue = 1 THEN 1 ELSE 0 END) / COUNT(*) * 100) as overdue_percentage
             ')
             ->groupBy('from_status')
             ->get();
+
+        // 2. Data untuk Top Performers (Per User) - INI YANG TADI HILANG
+        $userPerformance = (clone $baseQuery)
+            ->selectRaw('
+                handed_by,
+                COUNT(*) as total_handovers_count,
+                AVG(duration_in_hours) as avg_duration
+            ')
+            ->with('sender') // Pastikan ada relasi 'sender' di model HandoverLog
+            ->groupBy('handed_by')
+            ->orderBy('total_handovers_count', 'desc')
+            ->get();
         
+        // 3. Ringkasan Kotak Kecil
         $summary = [
             'total_handovers' => $baseQuery->count(),
             'avg_duration' => $baseQuery->avg('duration_in_hours') ?? 0,
-            'overdue_count' => $baseQuery->where('was_overdue', true)->count(),
+            'overdue_count' => (clone $baseQuery)->where('was_overdue', true)->count(),
         ];
+
+        // 4. Logika Export (Agar tombol Export Excel di halaman Performa jalan)
+        if ($request->has('export')) {
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\PerformanceExport($performance, $userPerformance),
+                'performance-report-' . date('Y-m-d') . '.xlsx'
+            );
+        }
         
-        return view('reports.performance', compact('performance', 'summary'));
+        return view('reports.performance', compact('performance', 'userPerformance', 'summary'));
     }
 
     public function export(Request $request)
