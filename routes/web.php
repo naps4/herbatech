@@ -49,38 +49,33 @@ Route::middleware(['auth'])->group(function () {
     // API Routes for Number Created
     Route::get('/cpb/last-number', [App\Http\Controllers\CPBController::class, 'getLastNumber']);
     
-   // CPB Routes
+    // CPB Routes
     Route::prefix('cpb')->name('cpb.')->group(function () {
         Route::get('/', [CPBController::class, 'index'])->name('index');
         Route::get('/create', [CPBController::class, 'create'])->name('create');
         Route::post('/', [CPBController::class, 'store'])->name('store');
-        Route::get('/last-number', [CPBController::class, 'getLastNumber'])->name('last-number');
-        Route::get('/export-pdf', [CPBController::class, 'exportPdf'])->name('export-pdf');
         
+        // Route khusus Export (Daftar Semua) - Letakkan DI ATAS rute {cpb} agar tidak terbaca sebagai ID
+        Route::get('/export-all-pdf', [CPBController::class, 'exportAllPdf'])->name('export-all-pdf');
+        Route::get('/export-pdf', [CPBController::class, 'exportPdf'])->name('export-pdf');
+
         Route::get('/{cpb}', [CPBController::class, 'show'])->name('show');
         Route::get('/{cpb}/edit', [CPBController::class, 'edit'])->name('edit');
         Route::put('/{cpb}', [CPBController::class, 'update'])->name('update');
-        Route::delete('/cpb/{cpb}/attachment/{attachment}', [App\Http\Controllers\CPBController::class, 'destroyAttachment'])
-            ->name('cpb.attachment.destroy');
+        Route::delete('/{cpb}', [CPBController::class, 'destroy'])->name('destroy');
         
-        // Handover routes (Validasi dokumen dilakukan di handoverForm)
-        Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handover.form');
-        Route::post('/{cpb}/handover', [CPBController::class, 'handover'])->name('handover.store');
-        
-        // Rework / Reject
-        Route::post('/{cpb}/reject', [CPBController::class, 'reject'])->name('reject');
-        
-        // Attachment Management
-        Route::post('/{cpb}/upload', [CPBController::class, 'uploadAttachment'])->name('upload');
-        
-        // Request route (PPIC -> QA)
-        Route::post('/{cpb}/request', [CPBController::class, 'requestToQA'])->name('request');
-        Route::post('/{cpb}/release', [CPBController::class, 'release'])->name('release');
-        Route::delete('/{cpb}/attachment/{attachment}', [CPBController::class, 'destroyAttachment'])->name('attachment.destroy');
-        
-        // Handover legacy routes (jika masih digunakan di controller)
+        // Handover & Reject
         Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handoverForm');
         Route::post('/{cpb}/handover', [CPBController::class, 'handover'])->name('handover');
+        Route::post('/{cpb}/reject', [CPBController::class, 'reject'])->name('reject');
+        
+        // Attachment - HAPUS awalan /cpb agar tidak duplikat
+        Route::post('/{cpb}/upload', [CPBController::class, 'uploadAttachment'])->name('upload');
+        Route::delete('/{cpb}/attachment/{attachment}', [CPBController::class, 'destroyAttachment'])->name('attachment.destroy');
+        
+        // QA & Release
+        Route::post('/{cpb}/request', [CPBController::class, 'requestToQA'])->name('request');
+        Route::post('/{cpb}/release', [CPBController::class, 'release'])->name('release');
     });
     
     // Handover Routes
