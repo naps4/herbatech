@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CPB;
 use App\Models\HandoverLog;
 use App\Models\User;
+use Mpdf\Mpdf;
 use App\Models\CPBAttachment;
 use App\Models\Notification;
 use Illuminate\Http\Request;
@@ -61,6 +62,39 @@ class CPBController extends Controller
             ->withQueryString();
 
         return view('cpb.index', compact('cpbs'));
+    }
+    
+    public function exportPdf()
+    {
+        // Mengambil data untuk daftar (sesuai isi export-pdf.blade.php Anda)
+        $cpbs = CPB::where('status', '!=', 'released')->latest()->get();
+
+        $html = view('cpb.export-pdf', compact('cpbs'))->render();
+
+        $mpdf = new Mpdf([
+            'format' => 'A4',
+            'margin_left' => 10,
+            'margin_right' => 10,
+            'margin_top' => 15,
+            'margin_bottom' => 15,
+        ]);
+
+        $mpdf->WriteHTML($html);
+        return $mpdf->Output('Daftar-CPB-Aktif.pdf', 'D');
+    }
+
+    public function exportAllPdf()
+    {
+        // Mengambil semua data CPB aktif
+        $cpbs = \App\Models\CPB::where('status', '!=', 'released')->get();
+
+        // Mengarahkan ke file view yang Anda buat tadi
+        $html = view('cpb.export-all-pdf', compact('cpbs'))->render();
+
+        $mpdf = new \Mpdf\Mpdf(['format' => 'A4-L']); // Gunakan 'L' untuk Landscape
+        $mpdf->WriteHTML($html);
+        
+        return $mpdf->Output('Daftar-CPB-Aktif.pdf', 'D');
     }
 
     public function show(CPB $cpb)

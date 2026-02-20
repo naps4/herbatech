@@ -164,8 +164,12 @@
                             <i class="fas fa-download"></i> Export
                         </button>
                         <div class="dropdown-menu dropdown-menu-right">
-                            <a class="dropdown-item" href="{{ route('reports.export', ['type' => 'active']) }}"><i class="fas fa-file-excel text-success"></i> Excel</a>
-                            <a class="dropdown-item" href="{{ route('cpb.export-pdf') }}"><i class="fas fa-file-pdf text-danger"></i> PDF</a>
+                            <a class="dropdown-item" href="{{ route('reports.export', ['type' => 'active']) }}">
+                                <i class="fas fa-file-excel text-success"></i> Excel
+                            </a>
+                            <a class="dropdown-item" href="{{ route('cpb.export-pdf') }}">
+                                <i class="fas fa-file-pdf text-danger"></i> PDF
+                            </a>
                         </div>
                     </div>
                 </div>
