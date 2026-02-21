@@ -27,48 +27,44 @@ class CPBController extends Controller
     {
         $user = auth()->user();
         $query = CPB::query();
-
-        // Fix logic index agar filter berjalan (Sebelumnya ada return di atas filter)
+    
+        // 1. Filter Status Aktif vs Released
         if ($request->get('status') === 'active') {
+            // Hanya data yang statusnya BUKAN released
             $query->where('status', '!=', 'released');
         } elseif ($request->get('status') === 'released') {
+            // Hanya data yang sudah released
             $query->where('status', 'released');
         }
-
+    
+        // 2. Filter Tambahan (Jika ada)
         if ($request->has('type') && $request->type != 'all') {
             $query->where('type', $request->type);
         }
-
+    
         if ($request->has('batch_number')) {
             $query->where('batch_number', 'like', '%' . $request->batch_number . '%');
         }
-
-        //parameter untuk pengecekan overdue
+    
         if ($request->has('overdue') && $request->overdue == 'true') {
             $query->where('is_overdue', true);
         }
     
-        $cpbs = $query->latest()->paginate(10);
-        return view('cpb.index', compact('cpbs'));
-
-        // Role-based filtering
+        // 3. Role-based filtering (Pindahkan ke SINI sebelum paginate)
         if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
                 $q->where('current_department_id', $user->id)
-                    ->orWhere('created_by', $user->id)
-                    ->orWhere('status', 'released');
-
-                if ($user->role === 'ppic') {
-                    $q->orWhere('status', 'qa');
-                }
+                  ->orWhere('created_by', $user->id);
+                // Tambahkan logika departemen spesifik jika diperlukan
             });
         }
-
+    
+        // 4. Eksekusi Paginate (Hanya satu kali di akhir)
         $cpbs = $query->orderBy('is_overdue', 'desc')
-            ->orderBy('entered_current_status_at', 'asc')
-            ->paginate(15)
-            ->withQueryString();
-
+                     ->orderBy('entered_current_status_at', 'asc')
+                     ->paginate(15)
+                     ->withQueryString();
+    
         return view('cpb.index', compact('cpbs'));
     }
     
@@ -208,10 +204,11 @@ class CPBController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
+            $validated = $request->validate([
             'batch_number' => 'required|unique:cpbs,batch_number|max:50',
             'type' => 'required|in:pengolahan,pengemasan',
             'product_name' => 'required|max:100',
+            'schedule_duration' => 'required|numeric|min:1', // Tambahkan validasi ini
             'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', 
         ]);
 
@@ -221,6 +218,7 @@ class CPBController extends Controller
                 'batch_number' => $validated['batch_number'],
                 'type' => $validated['type'],
                 'product_name' => $validated['product_name'],
+                'schedule_duration' => $validated['schedule_duration'], // Masukkan ke sini
                 'created_by' => auth()->id(),
                 'current_department_id' => auth()->id(),
                 'status' => 'rnd',

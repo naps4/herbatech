@@ -26,7 +26,7 @@
                                 <i class="fas fa-barcode mr-1"></i> Identitas Batch
                             </h6>
                             <div class="row">
-                                <div class="col-md-12">
+                                <!-- <div class="col-md-12">
                                     <div class="form-group">
                                         <label for="file">Lampiran Dokumen <span class="text-danger">*</span></label>
                                         <div class="custom-file">
@@ -43,6 +43,12 @@
                                             <span class="text-danger small"><strong>{{ $message }}</strong></span>
                                         @enderror
                                     </div>
+                                </div> -->
+                                <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>No. Batch</label>
+                                    <input type="text" id="batch_number" name="batch_number" class="form-control" readonly required>
+                                </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -68,6 +74,15 @@
                                             <span class="text-danger small"><strong>{{ $message }}</strong></span>
                                         @enderror
                                     </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="schedule_duration">Target Durasi (Jam) <span class="text-danger">*</span></label>
+                                    <input type="number" name="schedule_duration" id="schedule_duration" 
+                                        class="form-control @error('schedule_duration') is-invalid @enderror" 
+                                        value="{{ old('schedule_duration', 24) }}" required>
+                                    <small class="text-muted">Lama waktu pengerjaan yang direncanakan.</small>
                                 </div>
                             </div>
                         </div>
@@ -174,13 +189,18 @@ $(document).ready(function() {
         const year = new Date().getFullYear();
         const typeCode = type === 'pengolahan' ? 'P' : 'K';
         
-        $.get('/api/cpb/last-number?type=' + type, function(data) {
-            const nextNumber = (data.last_number || 0) + 1;
+        // Menggunakan url() agar alamatnya lengkap (http://127.0.0.1:8000/api/...)
+        const targetUrl = "{{ route('cpb.last-number') }}";
+        
+        $.get(targetUrl, { type: type }, function(data) {
+            console.log("Data diterima:", data); 
+            const nextNumber = (parseInt(data.last_number) || 0) + 1;
             const batchNumber = `CPB-${year}-${typeCode}${nextNumber.toString().padStart(3, '0')}`;
             $('#batch_number').val(batchNumber);
-        }).fail(function() {
-            const batchNumber = `CPB-${year}-${typeCode}001`;
-            $('#batch_number').val(batchNumber);
+        }).fail(function(xhr) {
+            console.error("Error Detail:", xhr.status);
+            // Jika masih 404, kita beri nomor manual sementara
+            $('#batch_number').val(`CPB-${year}-${typeCode}001`);
         });
     });
 });

@@ -225,37 +225,80 @@ $(document).ready(function() {
     };
 
     new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {!! json_encode($performance->pluck('from_status')->map(fn($i) => strtoupper($i))) !!},
-            datasets: [
-                {
-                    label: 'Rata-rata Durasi',
-                    data: {!! json_encode($performance->pluck('avg_duration')) !!},
-                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
-                    borderColor: '#007bff',
-                    borderWidth: 1,
-                    yAxisID: 'y'
-                },
-                {
-                    label: '% Overdue',
-                    data: {!! json_encode($performance->pluck('overdue_percentage')) !!},
-                    borderColor: '#dc3545',
-                    backgroundColor: '#dc3545',
-                    type: 'line',
-                    borderWidth: 3,
-                    yAxisID: 'y1'
-                }
-            ]
+    type: 'bar',
+    data: {
+        labels: {!! json_encode($performance->pluck('from_status')->map(fn($i) => strtoupper($i))) !!},
+        datasets: [
+            {
+                label: 'Rata-rata Durasi',
+                data: {!! json_encode($performance->pluck('avg_duration')) !!},
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                borderRadius: 5,
+                barPercentage: 0.5, // Menghilangkan kesan "gemuk" pada batang grafik
+                categoryPercentage: 0.5,
+                yAxisID: 'y',
+                order: 2
+            },
+            {
+                label: '% Overdue',
+                data: {!! json_encode($performance->pluck('overdue_percentage')) !!},
+                type: 'line',
+                borderColor: '#e74c3c',
+                backgroundColor: '#e74c3c',
+                borderWidth: 3,
+                pointRadius: 6,
+                pointBackgroundColor: '#ffffff', // Titik putih di tengah agar kontras
+                pointBorderWidth: 3,
+                tension: 0.4, // Membuat garis melengkung halus (smooth line)
+                yAxisID: 'y1',
+                order: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' }, // Posisi legenda di atas
+            tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                padding: 12,
+                cornerRadius: 8
+            }
         },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, ticks: { callback: (v) => formatTimeLabel(v) } },
-                y1: { position: 'right', min: 0, max: 100, ticks: { callback: (v) => v + '%' } }
+        scales: {
+            y: { 
+                beginAtZero: true,
+                title: { display: true, text: 'Waktu Pengerjaan' },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                ticks: { callback: (v) => formatTimeLabel(v) } 
+            },
+            y1: { 
+                position: 'right', 
+                min: 0, 
+                max: 100,
+                title: { display: true, text: 'Tingkat Keterlambatan (%)' },
+                grid: { display: false }, // Matikan grid kanan agar tidak tumpang tindih
+                ticks: { callback: (v) => v + '%' } 
             }
         }
-    });
+    }
+});
+
+    // logika auto log
+
+    console.log("Auto-refresh aktif...");
+    
+    setInterval(function() {
+        // Hanya refresh jika user sedang di paling atas (tidak sedang baca tabel di bawah)
+        if ($(window).scrollTop() === 0) {
+            console.log("Merefresh halaman untuk update data CPB...");
+            location.reload();
+        }
+    }, 30000); // 30 detik
+
 });
 
 function exportPerformance() {

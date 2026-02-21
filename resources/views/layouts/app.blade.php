@@ -87,8 +87,11 @@
     <!-- AdminLTE -->
     <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
     
-    <!-- Custom JS -->
-    <script src="{{ asset('js/app.js') }}"></script>
+    <!-- Custom JS
+    <script src="{{ asset('js/app.js') }}"></script> -->
+
+    <!-- versioning -->
+    <script src="{{ asset('js/app.js') }}?v={{ time() }}"></script>
     
     @stack('scripts')
 </body>

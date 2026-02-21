@@ -30,10 +30,13 @@
                     @endcan
 
                     {{-- 2. Rework - Filter Rework=true --}}
+                    {{-- 2. Rework - Filter Rework=true --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('cpb.index', ['rework' => 'true', 'status' => 'all']) }}" 
-                           class="btn btn-app bg-warning d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
+                        {{-- Hapus 'status' => 'rework' dari route --}}
+                        <a href="{{ route('cpb.index', ['rework' => 'true']) }}" 
+                        class="btn btn-app bg-warning d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
                             @php
+                                // Logika penghitungan count sudah benar menggunakan kolom is_rework
                                 $reworkQuery = \App\Models\CPB::where('is_rework', true);
                                 if (!$user->isSuperAdmin() && !$user->isQA() && !$user->isRND()) {
                                     $reworkQuery->where(function($q) use ($user) {
@@ -48,7 +51,6 @@
                             <i class="fas fa-undo text-dark"></i> <span class="text-dark font-weight-bold">Rework</span>
                         </a>
                     </div>
-
                     {{-- 3. Overdue --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
                         <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'all']) }}" 

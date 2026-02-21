@@ -62,7 +62,11 @@
                             @can('create', App\Models\CPB::class)
                             <li><a href="{{ route('cpb.create') }}" class="dropdown-item py-2"><i class="fas fa-plus-circle mr-2 text-success"></i> Buat CPB Baru</a></li>
                             @endcan
-                            <li><a href="{{ route('cpb.index') }}" class="dropdown-item py-2"><i class="fas fa-list-ul mr-2 text-primary"></i> Daftar CPB Aktif</a></li>
+                            <li>
+                                <a href="{{ route('cpb.index', ['status' => 'active']) }}" class="dropdown-item py-2">
+                                    <i class="fas fa-list-ul mr-2 text-primary"></i> Daftar CPB Aktif
+                                </a>
+                            </li>
                             <div class="dropdown-divider"></div>
                             <li>
                                 <a href="{{ route('cpb.index', ['overdue' => 'true']) }}" class="dropdown-item py-2">

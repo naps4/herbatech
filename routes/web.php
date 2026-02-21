@@ -30,6 +30,10 @@ Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
+
+    
+    // API Routes for Number Created
+    Route::get('/api/cpb/last-number', [CPBController::class, 'getLastNumber'])->name('cpb.last-number');
     
     // Dashboard & Home
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -45,9 +49,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::post('/clear', [NotificationController::class, 'clear'])->name('clear');
     });
-
-    // API Routes for Number Created
-    Route::get('/cpb/last-number', [App\Http\Controllers\CPBController::class, 'getLastNumber']);
     
     // CPB Routes
     Route::prefix('cpb')->name('cpb.')->group(function () {
@@ -65,7 +66,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{cpb}', [CPBController::class, 'destroy'])->name('destroy');
         
         // Handover & Reject
-        Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handoverForm');
+        Route::get('/{cpb}/handover', [CPBController::class, 'handoverForm'])->name('handover.form');
         Route::post('/{cpb}/handover', [CPBController::class, 'handover'])->name('handover');
         Route::post('/{cpb}/reject', [CPBController::class, 'reject'])->name('reject');
         
@@ -76,6 +77,9 @@ Route::middleware(['auth'])->group(function () {
         // QA & Release
         Route::post('/{cpb}/request', [CPBController::class, 'requestToQA'])->name('request');
         Route::post('/{cpb}/release', [CPBController::class, 'release'])->name('release');
+
+        //otomatis create no.batch
+        Route::get('/api/cpb/last-number', [CPBController::class, 'getLastNumber']);    
     });
     
     // Handover Routes
