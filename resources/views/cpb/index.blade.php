@@ -129,11 +129,6 @@
 
                                         {{-- Munculkan label jika batch sudah pindah dari PPIC/WH/Produksi/QC --}}
                                         @if(!$isManagement && !$isActuallyInThisDept && $cpb->status !== 'released')
-                                            <div class="mt-1">
-                                                <span class="badge badge-light border text-muted" style="font-size: 10px;">
-                                                    <i class="fas fa-history mr-1"></i> Pernah Dilewati
-                                                </span>
-                                            </div>
                                         @endif
                                     </td>
                                     <td class="align-middle text-sm text-dark">

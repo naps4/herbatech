@@ -30,13 +30,11 @@
                     @endcan
 
                     {{-- 2. Rework - Filter Rework=true --}}
-                    {{-- 2. Rework - Filter Rework=true --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
                         {{-- Hapus 'status' => 'rework' dari route --}}
                         <a href="{{ route('cpb.index', ['rework' => 'true']) }}" 
                         class="btn btn-app bg-warning d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
                             @php
-                                // Logika penghitungan count sudah benar menggunakan kolom is_rework
                                 $reworkQuery = \App\Models\CPB::where('is_rework', true);
                                 if (!$user->isSuperAdmin() && !$user->isQA() && !$user->isRND()) {
                                     $reworkQuery->where(function($q) use ($user) {
@@ -45,12 +43,15 @@
                                 }
                                 $reworkCount = $reworkQuery->count();
                             @endphp
+                            
                             @if($reworkCount > 0)
                                 <span class="badge badge-light border text-dark">{{ $reworkCount }}</span>
                             @endif
-                            <i class="fas fa-undo text-dark"></i> <span class="text-dark font-weight-bold">Rework</span>
+                            <i class="fas fa-undo text-light"></i> 
+                            <span class="text-light font-weight-bold">Rework</span>
                         </a>
                     </div>
+
                     {{-- 3. Overdue --}}
                     {{-- Quick Action Overdue --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
@@ -75,9 +76,9 @@
                             @endphp
 
                             @if($count > 0)
-                                <span class="badge badge-light border text-danger">{{ $count }}</span>
+                                <span class="badge badge-light border text-dark">{{ $count }}</span>
                             @endif
-                            <i class="fas fa-undo text-dark"></i> 
+                            <i class="fas fa-exclamation-triangle text-light"></i> 
                             <span class="text-white font-weight-bold">Overdue</span>
                         </a>
                     </div>
@@ -87,7 +88,7 @@
                         <a href="{{ route('notifications.index') }}" class="btn btn-app bg-info d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
                             @php $unreadCount = $user->unreadNotifications()->count(); @endphp
                             @if($unreadCount > 0)
-                                <span class="badge badge-danger">{{ $unreadCount }}</span>
+                                <span class="badge badge-light">{{ $unreadCount }}</span>
                             @endif
                             <i class="fas fa-bell"></i> Notifikasi
                         </a>
