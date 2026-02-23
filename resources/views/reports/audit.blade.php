@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
-@section('title')
-@section('page-title')
-@endsection
+@section('title', 'Audit Trail Serah Terima')
+@section('page-title', 'Audit Trail Serah Terima')
 
 @section('content')
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Filter Audit Trail</h3>
+        {{-- Card Filter --}}
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white">
+                <h3 class="card-title font-weight-bold"><i class="fas fa-filter mr-1 text-primary"></i> Filter Audit</h3>
                 <div class="card-tools">
                     <button type="button" class="btn btn-tool" data-card-widget="collapse">
                         <i class="fas fa-minus"></i>
@@ -21,117 +21,129 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="start_date">Tanggal Mulai</label>
-                                <input type="date" name="start_date" id="start_date" 
-                                       class="form-control" value="{{ request('start_date') }}">
+                                <label>Tanggal Mulai</label>
+                                <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="end_date">Tanggal Akhir</label>
-                                <input type="date" name="end_date" id="end_date" 
-                                       class="form-control" value="{{ request('end_date') }}">
+                                <label>Tanggal Akhir</label>
+                                <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="form-group">
-                                <label for="user_id">User</label>
-                                <select name="user_id" id="user_id" class="form-control">
-                                    <option value="">Semua User</option>
-                                    @foreach($users as $user)
-                                        <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                                            {{ $user->name }} ({{ $user->role }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <label>No. Batch</label>
+                                <input type="text" name="batch_number" class="form-control" placeholder="Cari nomor batch..." value="{{ request('batch_number') }}">
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="batch_number">No. Batch</label>
-                                <input type="text" name="batch_number" id="batch_number" 
-                                       class="form-control" value="{{ request('batch_number') }}" 
-                                       placeholder="Cari batch number">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter"></i> Filter
+                        <div class="col-md-2">
+                            <label class="d-none d-md-block">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary btn-block shadow-sm">
+                                <i class="fas fa-search mr-1"></i> Cari
                             </button>
-                            <a href="{{ route('reports.audit') }}" class="btn btn-default">
-                                <i class="fas fa-sync-alt"></i> Reset
-                            </a>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Riwayat Handover</h3>
+        {{-- Tabel Audit --}}
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h3 class="card-title font-weight-bold">Log Riwayat Serah Terima</h3>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light text-muted small text-uppercase">
                             <tr>
-                                <th>Waktu</th>
-                                <th>CPB</th>
-                                <th>Dari</th>
-                                <th>Ke</th>
-                                <th>Diserahkan Oleh</th>
-                                <th>Diterima Oleh</th>
-                                <th>Durasi (jam)</th>
-                                <th>Status</th>
-                                <th>Catatan</th>
+                                <th class="pl-4">Waktu Kejadian</th>
+                                <th>No. Batch</th>
+                                <th>Alur Departemen</th>
+                                <th>Pengirim (Oleh)</th>
+                                <th>Penerima (Kepada)</th>
+                                <th>Catatan / Keterangan</th>
+                                <th class="text-center pr-4">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($handovers as $handover)
-                                <tr class="{{ $handover->was_overdue ? 'table-danger' : '' }}">
-                                    <td>
-                                        {{ $handover->handed_at->format('d/m/Y') }}<br>
-                                        <small>{{ $handover->handed_at->format('H:i:s') }}</small>
+                            @forelse($handovers as $log)
+                                <tr>
+                                    <td class="pl-4 align-middle">
+                                        <div class="font-weight-bold text-dark">{{ $log->handed_at->format('d M Y') }}</div>
+                                        <small class="text-muted"><i class="far fa-clock mr-1"></i> {{ $log->handed_at->format('H:i') }} WIB</small>
                                     </td>
-                                    <td>
-                                        <strong>{{ $handover->cpb->batch_number }}</strong><br>
-                                        <small>{{ $handover->cpb->product_name }}</small>
+                                    <td class="align-middle">
+                                        <span class="badge badge-info shadow-xs px-2 py-1">{{ $log->cpb->batch_number }}</span>
                                     </td>
-                                    <td>{{ ucfirst($handover->from_status) }}</td>
-                                    <td>{{ ucfirst($handover->to_status) }}</td>
-                                    <td>{{ $handover->sender->name }}</td>
-                                    <td>{{ $handover->receiver->name ?? '-' }}</td>
-                                    <td class="text-right">{{ $handover->duration_in_hours ?? '-' }}</td>
-                                    <td>
-                                        @if($handover->was_overdue)
-                                            <span class="badge bg-danger">Overdue</span>
+                                    <td class="align-middle">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge badge-light border text-uppercase">{{ $log->from_status }}</span>
+                                            <i class="fas fa-long-arrow-alt-right mx-2 text-muted"></i>
+                                            <span class="badge badge-light border text-uppercase">{{ $log->to_status }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="text-sm font-weight-bold">{{ $log->sender->name }}</div>
+                                        <small class="text-muted text-xs text-uppercase">{{ $log->sender->role }}</small>
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="text-sm font-weight-bold">{{ $log->receiver->name ?? 'Sistem' }}</div>
+                                        <small class="text-muted text-xs text-uppercase">{{ $log->receiver->role ?? '-' }}</small>
+                                    </td>
+                                    <td class="align-middle">
+                                        @if($log->notes)
+                                            <span class="text-sm italic text-muted" title="{{ $log->notes }}">
+                                                {{ Str::limit($log->notes, 40) }}
+                                            </span>
                                         @else
-                                            <span class="badge bg-success">On Time</span>
+                                            <span class="text-muted small">-</span>
                                         @endif
                                     </td>
-                                    <td>{{ $handover->notes ?? '-' }}</td>
+                                    <td class="text-center pr-4 align-middle">
+                                        <a href="{{ route('cpb.show', $log->cpb_id) }}" class="btn btn-sm btn-outline-primary btn-round" title="Lihat CPB">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="fas fa-history fa-3x mb-3 opacity-25"></i>
+                                        <p>Belum ada riwayat aktivitas serah terima.</p>
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="card-footer">
-                {{ $handovers->links() }}
-                <div class="float-right">
-                    <small class="text-muted">
-                        Menampilkan {{ $handovers->count() }} dari {{ $handovers->total() }} handover
-                    </small>
+            <div class="card-footer bg-white border-top">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-0">
+                            Menampilkan <strong>{{ $handovers->firstItem() ?? 0 }}</strong> - <strong>{{ $handovers->lastItem() ?? 0 }}</strong> dari <strong>{{ $handovers->total() }}</strong> log
+                        </p>
+                    </div>
+                    <div>
+                        {{ $handovers->appends(request()->query())->links() }}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .table td, .table th { vertical-align: middle !important; border-top: 1px solid #f4f6f9; }
+    .badge-light.border { border: 1px solid #dee2e6 !important; background-color: #f8f9fa; font-weight: 500; }
+    .shadow-xs { box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .italic { font-style: italic; }
+    .btn-round { border-radius: 20px; padding-left: 12px; padding-right: 12px; }
+    .opacity-25 { opacity: 0.25; }
+    .text-xs { font-size: 0.75rem; }
+</style>
+@endpush

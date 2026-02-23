@@ -31,10 +31,6 @@ Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
 
-    
-    // API Routes for Number Created
-    Route::get('/api/cpb/last-number', [CPBController::class, 'getLastNumber'])->name('cpb.last-number');
-    
     // Dashboard & Home
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/home', function () {
@@ -56,7 +52,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [CPBController::class, 'create'])->name('create');
         Route::post('/', [CPBController::class, 'store'])->name('store');
         
-        // Route khusus Export (Daftar Semua) - Letakkan DI ATAS rute {cpb} agar tidak terbaca sebagai ID
+        // Export Rute (Letakkan di atas rute {cpb} agar tidak dianggap ID)
         Route::get('/export-all-pdf', [CPBController::class, 'exportAllPdf'])->name('export-all-pdf');
         Route::get('/export-pdf', [CPBController::class, 'exportPdf'])->name('export-pdf');
 
@@ -70,158 +66,86 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{cpb}/handover', [CPBController::class, 'handover'])->name('handover');
         Route::post('/{cpb}/reject', [CPBController::class, 'reject'])->name('reject');
         
-        // Attachment - HAPUS awalan /cpb agar tidak duplikat
+        // Attachments
         Route::post('/{cpb}/upload', [CPBController::class, 'uploadAttachment'])->name('upload');
         Route::delete('/{cpb}/attachment/{attachment}', [CPBController::class, 'destroyAttachment'])->name('attachment.destroy');
         
         // QA & Release
         Route::post('/{cpb}/request', [CPBController::class, 'requestToQA'])->name('request');
         Route::post('/{cpb}/release', [CPBController::class, 'release'])->name('release');
-
-        //otomatis create no.batch
-        Route::get('/api/cpb/last-number', [CPBController::class, 'getLastNumber']);    
     });
     
-    // Handover Routes
+    // Handover Routes (History & Legacy compatibility)
     Route::prefix('handover')->name('handover.')->group(function () {
-        // Menyelaraskan name 'handover.create' yang dipanggil di view detail agar lari ke handoverForm
         Route::get('/create/{cpb}', [CPBController::class, 'handoverForm'])->name('create');
         Route::post('/store/{cpb}', [CPBController::class, 'handover'])->name('store');
         Route::get('/history/{cpb}', [HandoverController::class, 'history'])->name('history');
-        Route::post('/receive/{handover}', [HandoverController::class, 'receive'])->name('receive');
-        Route::get('/history/{cpb}', [HandoverController::class, 'history'])->name('history');
     });
     
-    // REPORTS ROUTES - PERBAIKI INI
+    // REPORTS & AUDIT ROUTES
     Route::prefix('reports')->name('reports.')->group(function () {
-        // Boleh diakses semua user yang login
-        Route::middleware(['role:superadmin,qa,ppic,wh,produksi,qc,rnd'])->group(function () {
-            Route::get('/', [ReportController::class, 'index'])->name('index');
-            Route::get('/audit', [ReportController::class, 'audit'])->name('audit');
-        });
+        // 1. Diakses semua role (Visibilitas data difilter di ReportController@index)
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/audit', [ReportController::class, 'audit'])->name('audit');
         
-        // Hanya superadmin dan QA
+        // 2. Data Manajerial & Sensitif (Hanya Superadmin & QA)
         Route::middleware(['role:superadmin,qa'])->group(function () {
-            Route::get('/', [ReportController::class, 'index'])->name('index');
             Route::get('/export', [ReportController::class, 'export'])->name('export');
             Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
         });
     });
     
-    // USER MANAGEMENT ROUTES - Hanya untuk Super Admin
+    // USER MANAGEMENT ROUTES (Super Admin Only)
     Route::middleware(['role:superadmin'])->prefix('admin')->name('admin.')->group(function () {
-        // Admin Dashboard
         Route::get('/dashboard', function () {
             return view('admin.dashboard');
         })->name('dashboard');
         
-        // User Management Resource
         Route::resource('users', UserController::class);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
         Route::get('/users/{user}/activity', [UserController::class, 'activity'])->name('users.activity');
         
-        // Site Settings
-        Route::get('/settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
-        Route::post('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
-    });
-    
-    // User Registration (Super Admin only) - OLD ROUTE, BISA DIHAPUS ATAU DIPERTAHANKAN
-    Route::middleware(['role:superadmin'])->group(function () {
-        Route::get('register', function () {
-            return redirect()->route('admin.users.create');
-        })->name('register');
+        Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
     });
 });
 
-// API Routes
-Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
+/*
+|--------------------------------------------------------------------------
+| Internal API Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('api')->group(function () {
+    // API No. Batch Terakhir
+    Route::get('/cpb/last-number', [CPBController::class, 'getLastNumber'])->name('cpb.last-number');
+    
+    // API Statistik Dashboard
     Route::get('/dashboard/stats', function () {
-        $user = auth()->user();
-        $stats = [
+        return response()->json([
             'total' => \App\Models\CPB::count(),
             'active' => \App\Models\CPB::where('status', '!=', 'released')->count(),
             'overdue' => \App\Models\CPB::where('is_overdue', true)->count(),
-            'today' => \App\Models\CPB::whereDate('created_at', today())->count(),
-        ];
-        return response()->json(['stats' => $stats]);
+            'rework' => \App\Models\CPB::where('is_rework', true)->count(),
+        ]);
     });
-    
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    
+
+    // API Personil Penerima
     Route::get('/cpb/{id}/receivers', function ($id) {
         $cpb = \App\Models\CPB::findOrFail($id);
         $nextStatus = $cpb->getNextDepartment();
-        
-        if (!$nextStatus) {
-            return response()->json(['receivers' => []]);
-        }
-        
-        $receivers = \App\Models\User::where('role', $nextStatus)->get(['id', 'name', 'department']);
-        
+        $receivers = $nextStatus ? \App\Models\User::where('role', $nextStatus)->get(['id', 'name', 'department']) : [];
         return response()->json(['receivers' => $receivers]);
-    });
-    
-    // API untuk admin
-    Route::middleware(['role:superadmin'])->prefix('admin')->group(function () {
-        Route::get('/users/stats', function () {
-            $totalUsers = \App\Models\User::count();
-            $roleCounts = \App\Models\User::selectRaw('role, count(*) as count')
-                ->groupBy('role')
-                ->pluck('count', 'role');
-            
-            return response()->json([
-                'total' => $totalUsers,
-                'by_role' => $roleCounts
-            ]);
-        });
     });
 });
 
-// Test routes
+// Test/Debug Routes
 Route::get('/test-auth', function () {
     $user = auth()->user();
-    if (!$user) {
-        return 'Not authenticated';
-    }
-    
-    return response()->json([
+    return $user ? response()->json([
         'authenticated' => true,
-        'user_id' => $user->id,
-        'user_name' => $user->name,
-        'user_role' => $user->role,
-        'user_email' => $user->email,
+        'user' => $user->only(['id', 'name', 'role', 'email']),
         'is_superadmin' => $user->isSuperAdmin(),
-        'is_qa' => $user->isQA(),
-    ]);
-})->middleware('auth');
-
-Route::get('/test-gate/{cpb}', function (CPB $cpb) {
-    $user = auth()->user();
-    
-    return response()->json([
-        'user' => [
-            'id' => $user->id,
-            'role' => $user->role,
-            'name' => $user->name,
-        ],
-        'cpb' => [
-            'id' => $cpb->id,
-            'batch_number' => $cpb->batch_number,
-            'status' => $cpb->status,
-            'created_by' => $cpb->created_by,
-            'current_department_id' => $cpb->current_department_id,
-        ],
-        'gate_checks' => [
-            'view' => Gate::allows('view', $cpb),
-            'view-cpb' => Gate::allows('view-cpb', $cpb),
-        ],
-        'manual_checks' => [
-            'is_creator' => $cpb->created_by === $user->id,
-            'is_current_dept' => $cpb->current_department_id === $user->id,
-            'user_is_superadmin' => $user->isSuperAdmin(),
-            'user_is_qa' => $user->isQA(),
-        ],
-    ]);
+    ]) : 'Not authenticated';
 })->middleware('auth');
 
 // Route fallback untuk handle 404
