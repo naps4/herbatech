@@ -49,7 +49,7 @@ class DashboardController extends Controller
             ->with(['currentDepartment'])
             ->where('status', '!=', 'released')
             ->latest('entered_current_status_at')
-            ->paginate(10); // Menampilkan 10 data per halaman dengan fitur pagination
+            ->paginate(7); // Menampilkan 10 data per halaman dengan fitur pagination
 
         return view('dashboard.index', compact('cpbs', 'stats'));
     }
@@ -59,7 +59,7 @@ class DashboardController extends Controller
         $user = auth()->user();
         $notifications = $user->notifications()
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate(7);
             
         return view('notifications.index', compact('notifications'));
     }

@@ -8,19 +8,36 @@ use App\Models\CPB;
 use App\Models\HandoverLog;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Exports\CPBExport;
+use App\Exports\PerformanceExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
     public function __construct()
     {
-        // Middleware role hanya membatasi index, export, dan performance.
-        // Fungsi 'audit' dikecualikan agar role RND, PPIC, dll bisa akses.
-        $this->middleware('role:superadmin,qa')->except(['audit']);
+        // Hanya fungsi export dan performance yang dikunci untuk Admin/QA
+        $this->middleware('role:superadmin,qa')->only(['export', 'performance']);
+        
+        // Fungsi index dan audit diizinkan untuk semua role yang sudah login
+        $this->middleware('auth');
     }
     
     public function index(Request $request)
     {
+        $user = auth()->user();
         $query = CPB::query();
+
+        if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
+            $query->where(function($q) use ($user) {
+                $q->where('current_department_id', $user->id)
+                  ->orWhere('created_by', $user->id)
+                  ->orWhereHas('handoverLogs', function($sub) use ($user) {
+                      $sub->where('handed_by', $user->id)
+                          ->orWhere('received_by', $user->id);
+                  });
+            });
+        }
         
         if ($request->has('start_date') && $request->start_date) {
             $query->whereDate('created_at', '>=', $request->start_date);

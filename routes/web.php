@@ -95,8 +95,10 @@ Route::middleware(['auth'])->group(function () {
     // REPORTS ROUTES - PERBAIKI INI
     Route::prefix('reports')->name('reports.')->group(function () {
         // Boleh diakses semua user yang login
-        Route::get('/', [ReportController::class, 'index'])->name('index');
-        Route::get('/audit', [ReportController::class, 'audit'])->name('audit');
+        Route::middleware(['role:superadmin,qa,ppic,wh,produksi,qc,rnd'])->group(function () {
+            Route::get('/', [ReportController::class, 'index'])->name('index');
+            Route::get('/audit', [ReportController::class, 'audit'])->name('audit');
+        });
         
         // Hanya superadmin dan QA
         Route::middleware(['role:superadmin,qa'])->group(function () {
