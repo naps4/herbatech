@@ -9,24 +9,20 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+
     public function index()
     {
         /** @var \App\Models\User $user*/    
         $user = auth()->user();
-        $notifications = $user->unreadNotifications()->take(5)->get();
         
         // Siapkan query dasar untuk statistik agar sinkron dengan role
         $statsQuery = \App\Models\CPB::query();
         
         // Role-based filtering untuk Daftar CPB dan Statistik
-        if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
-            $statsQuery->where(function ($q) use ($user) {
-                $q->where('current_department_id', $user->id) // sedang di kerjakan
-                  ->orWhere('created_by', $user->id) // yang dibuat sendiri
-                  ->orWhereHas('handoverLogs', function ($sub) use ($user) { // Atau PERNAH dikerjakan
-                    $sub->where('handed_by', $user->id)
-                        ->orWhere('received_by', $user->id);
-                });
+        if (!$user->isSuperAdmin() && !$user->isQA()) {
+            $statsQuery->where(function($q) use ($user) {
+                $q->where('status', $user->role) // Berdasarkan departemen/role saat ini
+                  ->orWhere('created_by', $user->id); // Atau yang dibuat sendiri
             });
         }
     
@@ -40,19 +36,18 @@ class DashboardController extends Controller
         $stats = [
             'total_cpbs'   => (clone $statsQuery)->count(),
             'active_cpbs'  => (clone $statsQuery)->where('status', '!=', 'released')->count(),
-            'overdue_cpbs' => (clone $statsQuery)
-            ->where('is_overdue', true)
-            ->where('status', '!=', 'released')
-            ->count(),
-            'today_cpbs'   => (clone $statsQuery)->where(function($q) {
-                $q->whereDate('created_at', \Carbon\Carbon::today())
-                ->orWhereHas('handoverLogs', function($query) {
-                    $query->whereDate('created_at', \Carbon\Carbon::today());
-                });
-            })->count(),
+            'overdue_cpbs' => (clone $statsQuery)->where('is_overdue', true)->count(),
+            'today_cpbs'   => (clone $statsQuery)->whereDate('created_at', \Carbon\Carbon::today())->count(),
         ];
-        
-        return view('dashboard.index', compact('cpbs', 'notifications', 'stats'));
+
+        // 2. PERBAIKAN: Gunakan paginate() bukan get() agar bisa menggunakan links() dan appends()
+        $cpbs = (clone $baseQuery)
+            ->with(['currentDepartment'])
+            ->where('status', '!=', 'released')
+            ->latest('entered_current_status_at')
+            ->paginate(10); // Menampilkan 10 data per halaman dengan fitur pagination
+
+        return view('dashboard.index', compact('cpbs', 'stats'));
     }
     
     public function notifications()

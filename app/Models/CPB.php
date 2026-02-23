@@ -17,6 +17,10 @@ class CPB extends Model
      */
     protected $table = 'cpbs';
 
+    protected $attributes = [
+    'schedule_duration' => 0,
+    ];
+
     protected $fillable = [
         'batch_number',
         'type',
@@ -44,6 +48,7 @@ class CPB extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    
     public function currentDepartment()
     {
         return $this->belongsTo(User::class, 'current_department_id');

@@ -119,7 +119,23 @@
                                         </span>
                                     </td>
                                     <td class="align-middle">{{ $cpb->product_name }}</td>
-                                    <td class="align-middle">{!! $cpb->status_badge !!}</td>
+                                    <td class="align-middle">
+                                        {!! $cpb->status_badge !!}
+                                        
+                                        @php
+                                            $isActuallyInThisDept = ($cpb->status === auth()->user()->role);
+                                            $isManagement = (auth()->user()->isSuperAdmin() || auth()->user()->isQA());
+                                        @endphp
+
+                                        {{-- Munculkan label jika batch sudah pindah dari PPIC/WH/Produksi/QC --}}
+                                        @if(!$isManagement && !$isActuallyInThisDept && $cpb->status !== 'released')
+                                            <div class="mt-1">
+                                                <span class="badge badge-light border text-muted" style="font-size: 10px;">
+                                                    <i class="fas fa-history mr-1"></i> Pernah Dilewati
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="align-middle text-sm text-dark">
                                         <i class="fas fa-user-circle text-muted mr-1"></i>
                                         {{ $cpb->currentDepartment->name ?? '-' }}
@@ -209,5 +225,6 @@
     .table td, .table th { vertical-align: middle; white-space: nowrap; }
     .opacity-20 { opacity: 0.2; }
     .shadow-xs { box-shadow: 0 1px 2px rgba(0,0,0,0.075); }
+    .badge-light.border { border: 1px solid #dee2e6 !important; background-color: #f8f9fa; }
 </style>
 @endpush

@@ -23,24 +23,10 @@ class CPBController extends Controller
         $this->middleware('auth');
     }
 
-    public function index(Request $request)
+public function index(Request $request)
     {
         $user = auth()->user();
         $query = CPB::query();
-
-        //logika penangkap start_date
-        // 1. Logika Filter Tanggal (CPB Hari Ini / Filter Tanggal)
-        if ($request->filled('start_date')) {
-            $date = $request->start_date;
-            $query->where(function ($q) use ($date) {
-                // Tampilkan data yang DIBUAT pada tanggal tersebut
-                $q->whereDate('created_at', $date)
-                // ATAU data yang memiliki AKTIVITAS handover pada tanggal tersebut
-                ->orWhereHas('handoverLogs', function ($sub) use ($date) {
-                    $sub->whereDate('handed_at', $date); 
-                });
-            });
-        }
     
         // 1. Filter Status Aktif vs Released
         if ($request->get('status') === 'active') {
@@ -50,9 +36,9 @@ class CPBController extends Controller
             // Hanya data yang sudah released
             $query->where('status', 'released');
         }
-    
-        // 2. Filter Tambahan (Jika ada)
-        if ($request->has('type') && $request->type != 'all') {
+
+        // Filter Jenis (Pengolahan/Pengemasan)
+        if ($request->filled('type') && $request->type !== 'all') {
             $query->where('type', $request->type);
         }
     
@@ -61,29 +47,22 @@ class CPBController extends Controller
         }
     
         if ($request->has('overdue') && $request->overdue == 'true') {
-            $query->where('is_overdue', true)
-                  ->where('status', '!=', 'released'); // TAMBAHKAN INI
+            $query->where('is_overdue', true);
         }
     
         // 3. Role-based filtering (Pindahkan ke SINI sebelum paginate)
         if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
-                //menampilkan ketika data berada di dapartement
                 $q->where('current_department_id', $user->id)
-                //atau dapartement ini yang membuat batch
-                  ->orWhere('created_by', $user->id)
-                //atau dapartement PERNAH terlibat dalam proses serah terima batch ini
-                ->orWhereHas('handoverLogs', function ($subQuery) use ($user) {
-                    $subQuery->where('handed_by', $user->id)
-                             ->orWhere('received_by', $user->id);
-                });
+                  ->orWhere('created_by', $user->id);
+                // Tambahkan logika departemen spesifik jika diperlukan
             });
         }
     
         // 4. Eksekusi Paginate (Hanya satu kali di akhir)
         $cpbs = $query->orderBy('is_overdue', 'desc')
                      ->orderBy('entered_current_status_at', 'asc')
-                     ->paginate(7)
+                     ->paginate(15)
                      ->withQueryString();
     
         return view('cpb.index', compact('cpbs'));
@@ -156,7 +135,6 @@ class CPBController extends Controller
 
         $nextUsers = User::where('role', $nextStatus)->get();
 
-        // PASTIKAN FILE INI ADA: resources/views/handover/create.blade.php
         return view('handover.create', compact('cpb', 'nextStatus', 'nextUsers'));
     }
 
@@ -220,61 +198,76 @@ class CPBController extends Controller
     }
 
     public function store(Request $request)
-    {
-        if (!Gate::allows('create', CPB::class)) {
-            abort(403);
-        }
+{
+    if (!Gate::allows('create', CPB::class)) {
+        abort(403);
+    }
 
-            $validated = $request->validate([
-            'batch_number' => 'required|unique:cpbs,batch_number|max:50',
-            'type' => 'required|in:pengolahan,pengemasan',
-            'product_name' => 'required|max:100',
-            'schedule_duration' => 'required|numeric|min:1', // Tambahkan validasi ini
-            'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', 
+    $validated = $request->validate([
+        'batch_number' => 'required|unique:cpbs,batch_number|max:50',
+        'type' => 'required|in:pengolahan,pengemasan',
+        'product_name' => 'required|max:100',
+        'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480', 
+    ]);
+
+    // LOGIKA PERBAIKAN BUG ROLE QA:
+    // Jika pembuat adalah RND, maka dia pemegangnya.
+    // Jika pembuat bukan RND (misal QA), maka cari user RND pertama untuk jadi pemegang.
+    $creator = auth()->user();
+    $currentDeptId = $creator->id;
+
+    if ($creator->role !== 'rnd') {
+        $firstRndUser = User::where('role', 'rnd')->first();
+        if ($firstRndUser) {
+            $currentDeptId = $firstRndUser->id;
+        }
+    }
+
+    DB::beginTransaction();
+    try {
+        $cpb = CPB::create([
+            'batch_number' => $validated['batch_number'],
+            'type' => $validated['type'],
+            'product_name' => $validated['product_name'],
+            'created_by' => $creator->id,
+            'current_department_id' => $currentDeptId, // Dinamis berdasarkan logika di atas
+            'status' => 'rnd', // Tahapan tetap dimulai dari RND
+            'entered_current_status_at' => now(),
         ]);
 
-        DB::beginTransaction();
-        try {
-            $cpb = CPB::create([
-                'batch_number' => $validated['batch_number'],
-                'type' => $validated['type'],
-                'product_name' => $validated['product_name'],
-                'schedule_duration' => $validated['schedule_duration'], // Masukkan ke sini
-                'created_by' => auth()->id(),
-                'current_department_id' => auth()->id(),
-                'status' => 'rnd',
-                'entered_current_status_at' => now(),
-            ]);
-
-            // Simpan Dokumen Awal (RND)
+        // Simpan lampiran
+        if ($request->hasFile('file')) {
             $file = $request->file('file');
             $path = $file->storeAs('attachments/' . $cpb->id, time() . '_' . $file->getClientOriginalName(), 'public');
             $cpb->attachments()->create([
-                'uploaded_by' => auth()->id(),
+                'uploaded_by' => $creator->id,
                 'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
                 'file_type' => $file->getClientOriginalExtension(),
-                'description' => 'Dokumen Awal CPB'
+                'description' => 'Dokumen Awal CPB oleh ' . strtoupper($creator->role)
             ]);
-
-            HandoverLog::create([
-                'cpb_id' => $cpb->id,
-                'from_status' => 'created',
-                'to_status' => 'rnd',
-                'handed_by' => auth()->id(),
-                'handed_at' => now(),
-                'notes' => 'CPB dibuat oleh RND'
-            ]);
-
-            event(new CPBCreated($cpb));
-            DB::commit();
-
-            return redirect()->route('cpb.show', $cpb)->with('success', 'CPB Berhasil dibuat.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal: ' . $e->getMessage());
         }
+
+        // Log Handover Awal
+        HandoverLog::create([
+            'cpb_id' => $cpb->id,
+            'from_status' => 'created',
+            'to_status' => 'rnd',
+            'handed_by' => $creator->id,
+            'received_by' => $currentDeptId,
+            'handed_at' => now(),
+            'notes' => 'CPB dibuat dan diteruskan ke bagian RND'
+        ]);
+
+        event(new CPBCreated($cpb));
+        DB::commit();
+
+        return redirect()->route('cpb.show', $cpb)->with('success', 'CPB berhasil dibuat dan dialokasikan ke bagian RND.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Gagal: ' . $e->getMessage());
     }
+}
 
     public function reject(Request $request, CPB $cpb)
     {
@@ -470,18 +463,35 @@ class CPBController extends Controller
 
     public function destroyAttachment(CPB $cpb, CPBAttachment $attachment)
 {
-    // Cek izin (Hanya pemegang dokumen aktif atau SuperAdmin)
-    if (auth()->user()->role !== $cpb->status && !auth()->user()->isSuperAdmin()) {
-        abort(403, 'Anda tidak memiliki akses untuk menghapus lampiran ini.');
+    $user = auth()->user();
+
+    // 1. Cek apakah user adalah pengunggah asli atau SuperAdmin
+    $isOwner = ($user->id === $attachment->uploaded_by);
+    $isAdmin = $user->isSuperAdmin();
+
+    if (!$isOwner && !$isAdmin) {
+        abort(403, 'Anda tidak memiliki hak untuk menghapus lampiran ini.');
+    }
+
+    // 2. Logika Pembatasan: 
+    // Jika bukan Admin, cek apakah role pengunggah masih memegang batch atau sedang rework
+    if (!$isAdmin) {
+        // Cek apakah role pengunggah sama dengan status departemen CPB saat ini
+        $isCurrentRoleHolder = ($user->role === $cpb->status);
+        $isReworkStatus = $cpb->is_rework;
+
+        if (!$isCurrentRoleHolder && !$isReworkStatus) {
+            return back()->with('error', 'Gagal! Anda tidak dapat menghapus dokumen karena batch sudah diteruskan ke departemen lain (Hanya bisa dihapus saat status Rework).');
+        }
     }
 
     try {
-        // 1. Hapus file fisik dari folder storage
+        // Hapus file fisik
         if (Storage::disk('public')->exists($attachment->file_path)) {
             Storage::disk('public')->delete($attachment->file_path);
         }
 
-        // 2. Hapus data dari database
+        // Hapus data database
         $attachment->delete();
 
         return back()->with('success', 'Lampiran berhasil dihapus.');
