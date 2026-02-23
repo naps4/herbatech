@@ -52,22 +52,33 @@
                         </a>
                     </div>
                     {{-- 3. Overdue --}}
+                    {{-- Quick Action Overdue --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'all']) }}" 
-                           class="btn btn-app bg-danger d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
+                        <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'active']) }}" 
+                        class="btn btn-app bg-danger d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
                             @php
-                                $overdueQuery = \App\Models\CPB::where('is_overdue', true);
-                                if (!$user->isSuperAdmin() && !$user->isQA() && !$user->isRND()) {
-                                    $overdueQuery->where(function($q) use ($user) {
-                                        $q->where('status', $user->role)->orWhere('created_by', $user->id);
+                                // Menghitung jumlah yang overdue dan belum released untuk badge
+                                $overdueCount = \App\Models\CPB::where('is_overdue', true)
+                                    ->where('status', '!=', 'released');
+
+                                // Filter role agar user biasa hanya melihat jumlah miliknya
+                                if (!auth()->user()->isSuperAdmin() && !auth()->user()->isQA() && auth()->user()->role !== 'rnd') {
+                                    $overdueCount->where(function($q) {
+                                        $q->where('current_department_id', auth()->id())
+                                        ->orWhereHas('handoverLogs', function($sub) {
+                                            $sub->where('handed_by', auth()->id())
+                                                ->orWhere('received_by', auth()->id());
+                                        });
                                     });
                                 }
-                                $overdueCount = $overdueQuery->count();
+                                $count = $overdueCount->count();
                             @endphp
-                            @if($overdueCount > 0)
-                                <span class="badge badge-light border text-danger">{{ $overdueCount }}</span>
+
+                            @if($count > 0)
+                                <span class="badge badge-light border text-danger">{{ $count }}</span>
                             @endif
-                            <i class="fas fa-exclamation-triangle"></i> <span class="font-weight-bold">Overdue</span>
+                            <i class="fas fa-undo text-dark"></i> 
+                            <span class="text-white font-weight-bold">Overdue</span>
                         </a>
                     </div>
 

@@ -17,7 +17,7 @@
 <div class="col-lg-3 col-6">
     <div class="small-box bg-success">
         <div class="inner">
-            <h3>{{ $stats['active_cpbs'] }}</h3>
+            <h3>{{ $stats['active_cpbs'] ?? 0 }}</h3>
             <p>CPB Aktif</p>
         </div>
         <div class="icon">

@@ -27,6 +27,20 @@ class CPBController extends Controller
     {
         $user = auth()->user();
         $query = CPB::query();
+
+        //logika penangkap start_date
+        // 1. Logika Filter Tanggal (CPB Hari Ini / Filter Tanggal)
+        if ($request->filled('start_date')) {
+            $date = $request->start_date;
+            $query->where(function ($q) use ($date) {
+                // Tampilkan data yang DIBUAT pada tanggal tersebut
+                $q->whereDate('created_at', $date)
+                // ATAU data yang memiliki AKTIVITAS handover pada tanggal tersebut
+                ->orWhereHas('handoverLogs', function ($sub) use ($date) {
+                    $sub->whereDate('handed_at', $date); 
+                });
+            });
+        }
     
         // 1. Filter Status Aktif vs Released
         if ($request->get('status') === 'active') {
@@ -47,22 +61,29 @@ class CPBController extends Controller
         }
     
         if ($request->has('overdue') && $request->overdue == 'true') {
-            $query->where('is_overdue', true);
+            $query->where('is_overdue', true)
+                  ->where('status', '!=', 'released'); // TAMBAHKAN INI
         }
     
         // 3. Role-based filtering (Pindahkan ke SINI sebelum paginate)
         if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
+                //menampilkan ketika data berada di dapartement
                 $q->where('current_department_id', $user->id)
-                  ->orWhere('created_by', $user->id);
-                // Tambahkan logika departemen spesifik jika diperlukan
+                //atau dapartement ini yang membuat batch
+                  ->orWhere('created_by', $user->id)
+                //atau dapartement PERNAH terlibat dalam proses serah terima batch ini
+                ->orWhereHas('handoverLogs', function ($subQuery) use ($user) {
+                    $subQuery->where('handed_by', $user->id)
+                             ->orWhere('received_by', $user->id);
+                });
             });
         }
     
         // 4. Eksekusi Paginate (Hanya satu kali di akhir)
         $cpbs = $query->orderBy('is_overdue', 'desc')
                      ->orderBy('entered_current_status_at', 'asc')
-                     ->paginate(15)
+                     ->paginate(7)
                      ->withQueryString();
     
         return view('cpb.index', compact('cpbs'));
