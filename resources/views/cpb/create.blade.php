@@ -76,15 +76,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="schedule_duration">Target Durasi (Jam) <span class="text-danger">*</span></label>
-                                    <input type="number" name="schedule_duration" id="schedule_duration" 
-                                        class="form-control @error('schedule_duration') is-invalid @enderror" 
-                                        value="{{ old('schedule_duration', 24) }}" required>
-                                    <small class="text-muted">Lama waktu pengerjaan yang direncanakan.</small>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="mb-4">

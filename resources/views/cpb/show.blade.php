@@ -76,7 +76,6 @@
         <div class="card shadow-sm border-light">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h3 class="card-title font-weight-bold mb-0">Dokumen Lampiran</h3>
-                {{-- FIX: Check hasAttachment dari Controller --}}
                 @if(!$hasAttachment && (auth()->user()->role === $cpb->status || auth()->user()->isSuperAdmin()) && $cpb->status !== 'released')
                     <span class="badge badge-danger"><i class="fas fa-exclamation-circle mr-1"></i> Wajib Upload Dokumen</span>
                 @endif
@@ -98,7 +97,7 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <i class="fas fa-file-pdf text-danger fa-lg mr-2"></i>
+                                                <i class="fas fa-file-alt text-primary fa-lg mr-2"></i>
                                                 <span class="text-sm font-weight-medium text-dark">{{ $attachment->file_name }}</span>
                                             </div>
                                         </td>
@@ -110,14 +109,31 @@
                                             <a href="{{ Storage::url($attachment->file_path) }}" class="btn btn-sm btn-outline-primary" download title="Unduh File">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            {{-- FIX: Tambahkan tombol hapus lampiran --}}
-                                            @if(auth()->id() === $attachment->uploaded_by || auth()->user()->isSuperAdmin())
-                                            <form action="{{ route('cpb.attachment.destroy', ['cpb' => $cpb->id, 'attachment' => $attachment->id]) }}" method="POST" class="d-inline">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus lampiran ini?')">
-                                                    <i class="fas fa-trash-alt"></i>
+
+                                            {{-- LOGIKA: Izin Hapus Dokumen --}}
+                                            @php
+                                                $isOwner = auth()->id() === $attachment->uploaded_by;
+                                                $isSuperAdmin = auth()->user()->isSuperAdmin();
+                                                $isCurrentRoleHolder = auth()->user()->role === $cpb->status;
+                                                $isRework = $cpb->is_rework;
+
+                                                // User bisa hapus jika:
+                                                // 1. Dia SuperAdmin OR
+                                                // 2. Dia pengunggah asli DAN (Batch masih di departemennya OR sedang status Rework)
+                                                $canDelete = $isSuperAdmin || ($isOwner && ($isCurrentRoleHolder || $isRework));
+                                            @endphp
+
+                                            @if($canDelete)
+                                                <form action="{{ route('cpb.attachment.destroy', ['cpb' => $cpb->id, 'attachment' => $attachment->id]) }}" method="POST" class="d-inline">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus lampiran ini?')">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <button class="btn btn-sm btn-light disabled" title="Terkunci (Batch sudah berpindah)">
+                                                    <i class="fas fa-lock text-muted"></i>
                                                 </button>
-                                            </form>
                                             @endif
                                         </td>
                                     </tr>
@@ -224,7 +240,6 @@
                 <hr>
 
                 <div class="actions">
-                    {{-- 1. Tombol RELEASE (Hanya QA) --}}
                     @if(auth()->user()->role === 'qa' || auth()->user()->isSuperAdmin())
                         @if($cpb->is_final_qa)
                             <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="mb-3">
@@ -237,18 +252,15 @@
                         @endif
                     @endif
 
-                    {{-- 2. Tombol SERAHKAN CPB (FIX Rute ke handover.form) --}}
                     @if(auth()->user()->role === $cpb->status || auth()->user()->isSuperAdmin())
                         @can('handover', $cpb)
                             @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
                                 @if($hasAttachment)
-                                    {{-- Aktif jika ada dokumen --}}
                                     <a href="{{ route('cpb.handover.form', ['cpb' => $cpb->id]) }}" class="btn btn-success btn-block btn-lg shadow-sm font-weight-bold py-3 mb-3">
                                         <i class="fas fa-paper-plane mr-2"></i> SERAHKAN CPB
                                         <small class="d-block text-xs font-weight-normal mt-1 opacity-75">Kirim ke {{ strtoupper($cpb->getNextDepartment()) }}</small>
                                     </a>
                                 @else
-                                    {{-- Terkunci jika tidak ada dokumen --}}
                                     <button class="btn btn-secondary btn-block btn-lg py-3 mb-3" onclick="Swal.fire('Dokumen Wajib', 'Unggah laporan/lampiran terlebih dahulu sebelum melakukan handover.', 'warning')">
                                         <i class="fas fa-lock mr-2"></i> SERAHKAN CPB
                                         <small class="d-block text-xs font-weight-normal mt-1">Laporan Belum Diunggah</small>
@@ -275,7 +287,6 @@
     </div>
 </div>
 
-{{-- Modal Reject tetap sama --}}
 <div class="modal fade" id="modal-reject" data-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <form action="{{ route('cpb.reject', $cpb) }}" method="POST">
