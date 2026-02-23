@@ -69,9 +69,30 @@
                             </li>
                             <div class="dropdown-divider"></div>
                             <li>
-                                <a href="{{ route('cpb.index', ['overdue' => 'true']) }}" class="dropdown-item py-2">
+                                {{-- Update link agar menyertakan status active secara otomatis --}}
+                                <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'active']) }}" class="dropdown-item py-2">
                                     <i class="fas fa-clock mr-2 text-danger"></i> CPB Overdue
-                                    @php $overdueCount = \App\Models\CPB::where('is_overdue', true)->count(); @endphp
+                                    
+                                    @php 
+                                        $user = auth()->user();
+                                        // Mulai query dasar untuk overdue yang belum released
+                                        $overdueQuery = \App\Models\CPB::where('is_overdue', true)
+                                            ->where('status', '!=', 'released'); 
+
+                                        // Terapkan filter hak akses yang sama dengan Dashboard agar angka sinkron
+                                        if (!$user->isSuperAdmin() && !$user->isQA() && $user->role !== 'rnd') {
+                                            $overdueQuery->where(function($q) use ($user) {
+                                                $q->where('current_department_id', $user->id)
+                                                ->orWhere('created_by', $user->id)
+                                                ->orWhereHas('handoverLogs', function($sub) use ($user) {
+                                                    $sub->where('handed_by', $user->id)
+                                                        ->orWhere('received_by', $user->id);
+                                                });
+                                            });
+                                        }
+                                        $overdueCount = $overdueQuery->count();
+                                    @endphp
+
                                     @if($overdueCount > 0)
                                         <span class="badge badge-danger float-right mt-1 shadow-xs">{{ $overdueCount }}</span>
                                     @endif

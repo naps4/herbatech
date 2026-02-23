@@ -98,6 +98,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Rute untuk melihat profil sendiri
     Route::get('/profile', [UserController::class, 'showProfile'])->name('profile.show');
+
+    // Menampilkan halaman edit profil
+    Route::get('/profile/edit', [UserController::class, 'editProfile'])->name('profile.edit');
+    // Menyimpan perubahan profil
+    Route::put('/profile/update', [UserController::class, 'updateProfile'])->name('profile.update');
+    
+    // Rute profil yang sudah kita buat sebelumnya
+    Route::get('/profile', [UserController::class, 'showProfile'])->name('profile.show');
     
     // USER MANAGEMENT ROUTES (Super Admin Only)
     Route::middleware(['role:superadmin'])->prefix('admin')->name('admin.')->group(function () {

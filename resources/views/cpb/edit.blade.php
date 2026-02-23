@@ -44,7 +44,7 @@
                         @enderror
                     </div>
                     
-                    <div class="form-group">
+                    <!-- <div class="form-group">
                         <label for="schedule_duration">Durasi Rencana Produksi (jam) *</label>
                         <input type="number" class="form-control @error('schedule_duration') is-invalid @enderror" 
                                id="schedule_duration" name="schedule_duration" 
@@ -55,7 +55,7 @@
                                 <strong>{{ $message }}</strong>
                             </span>
                         @enderror
-                    </div>
+                    </div> -->
                     
                     <div class="form-group">
                         <label>Status Saat Ini</label>

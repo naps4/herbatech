@@ -46,19 +46,10 @@
                     </ul>
 
                     <div class="row pt-2">
-                        <div class="col-12">
-                            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-warning btn-block font-weight-bold shadow-sm mb-2">
-                                <i class="fas fa-user-edit mr-1"></i> EDIT PROFIL
+                    <div class="mt-9">
+                            <a href="{{ route('profile.edit') }}" class="btn btn-warning">
+                                <i class="fas fa-user-edit"></i> Edit Profil Saya
                             </a>
-                            @if(auth()->id() != $user->id)
-                            <form action="{{ route('admin.users.destroy', $user) }}" method="POST" 
-                                  onsubmit="return confirm('Hapus user ini?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-outline-danger btn-block btn-sm border-0">
-                                    <i class="fas fa-trash-alt mr-1"></i> Hapus Akun
-                                </button>
-                            </form>
-                            @endif
                         </div>
                     </div>
                 </div>
