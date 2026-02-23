@@ -96,8 +96,10 @@
 
                     {{-- 5. Laporan --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('reports.index') }}" class="btn btn-app bg-secondary d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
-                            <i class="fas fa-chart-bar"></i> Laporan
+                        <a href="{{ route('reports.index') }}" 
+                        class="btn btn-app bg-teal d-block w-100 m-0 py-3 shadow-sm border-0 h-100">
+                            <i class="fas fa-file-invoice text-white"></i> 
+                            <span class="text-white font-weight-bold">Semua Laporan</span>
                         </a>
                     </div>
                 </div>
