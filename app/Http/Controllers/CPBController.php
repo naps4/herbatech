@@ -38,8 +38,16 @@ public function index(Request $request)
         }
 
         // Filter Jenis (Pengolahan/Pengemasan)
-        if ($request->filled('type') && $request->type !== 'all') {
-            $query->where('type', $request->type);
+        if ($request->filled('start_date')) {
+            $date = $request->start_date;
+            $query->where(function ($q) use ($date) {
+                // Tampilkan data yang DIBUAT pada tanggal tersebut
+                $q->whereDate('created_at', $date)
+                  // ATAU data yang memiliki AKTIVITAS handover pada tanggal tersebut
+                  ->orWhereHas('handoverLogs', function ($sub) use ($date) {
+                      $sub->whereDate('handed_at', $date); 
+                  });
+            });
         }
     
         if ($request->has('batch_number')) {
@@ -47,7 +55,8 @@ public function index(Request $request)
         }
     
         if ($request->has('overdue') && $request->overdue == 'true') {
-            $query->where('is_overdue', true);
+            $query->where('is_overdue', true)
+                  ->where('status', '!=', 'released'); // TAMBAHKAN INI
         }
     
         // 3. Role-based filtering (Pindahkan ke SINI sebelum paginate)
@@ -62,7 +71,7 @@ public function index(Request $request)
         // 4. Eksekusi Paginate (Hanya satu kali di akhir)
         $cpbs = $query->orderBy('is_overdue', 'desc')
                      ->orderBy('entered_current_status_at', 'asc')
-                     ->paginate(15)
+                     ->paginate(7)
                      ->withQueryString();
     
         return view('cpb.index', compact('cpbs'));
