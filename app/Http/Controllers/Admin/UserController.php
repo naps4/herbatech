@@ -92,6 +92,12 @@ class UserController extends Controller
         return view('admin.users.show', compact('user'));
     }
 
+    public function showProfile()
+    {
+        $user = auth()->user(); // Mengambil data user yang sedang login
+        return view('admin.users.show', compact('user'));
+    }
+
     public function edit(User $user)
     {
         $roles = [

@@ -28,6 +28,7 @@ Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
+
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
 
@@ -107,6 +108,9 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
         });
     });
+
+    // Rute untuk melihat profil sendiri
+    Route::get('/profile', [UserController::class, 'showProfile'])->name('profile.show');
     
     // USER MANAGEMENT ROUTES - Hanya untuk Super Admin
     Route::middleware(['role:superadmin'])->prefix('admin')->name('admin.')->group(function () {

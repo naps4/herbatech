@@ -182,7 +182,7 @@
                             <span class="badge badge-primary-soft text-primary mt-2">{{ strtoupper(auth()->user()->role) }}</span>
                         </div>
                         <div class="dropdown-divider"></div>
-                        <a href="{{ route('admin.users.show', auth()->id()) }}" class="dropdown-item py-2">
+                        <a href="{{ route('profile.show') }}" class="dropdown-item py-2">
                             <i class="fas fa-id-card mr-3 text-muted"></i> Profil Saya
                         </a>
                         <div class="dropdown-divider"></div>
