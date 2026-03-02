@@ -145,10 +145,36 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Update label input file secara dinamis
-        $(".custom-file-input").on("change", function() {
+        // 1. Update label saat pilih file
+        $(document).on("change", ".custom-file-input", function() {
             var fileName = $(this).val().split("\\").pop();
-            $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+            if (fileName) {
+                $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+            }
+        });
+
+        // 2. Perbaikan Fungsi RESET
+        $('button[type="reset"]').on('click', function(e) {
+            // Form reset default
+            var form = $(this).closest('form');
+
+            // Gunakan setTimeout agar berjalan SETELAH nilai input dikosongkan browser
+            setTimeout(function() {
+                // Reset teks label input file ke semula
+                form.find('.custom-file-label').each(function() {
+                    var originalLabel = "Pilih file logo"; // Default awal
+                    if ($(this).attr('for') === 'app_favicon') {
+                        originalLabel = "Pilih file favicon";
+                    }
+                    $(this).removeClass("selected").html(originalLabel);
+                });
+
+                // Reset input file secara fisik (membersihkan file yang sudah dipilih)
+                form.find('.custom-file-input').val('');
+
+                // Pindah kembali ke tab pertama (General) agar user tidak bingung
+                $('#general-tab').tab('show');
+            }, 50);
         });
     });
 </script>

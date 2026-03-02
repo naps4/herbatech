@@ -11,6 +11,8 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SettingController;
+use Illuminate\Support\Facades\Auth;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +47,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-as-read');
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::post('/clear', [NotificationController::class, 'clear'])->name('clear');
+    });
+
+    Route::prefix('api')->group(function () {
+        Route::get('/notifications/unread-count', function () {
+            return response()->json(['count' => auth()->user()->unreadNotifications()->count()]);
+        });
     });
 
     // CPB Routes
