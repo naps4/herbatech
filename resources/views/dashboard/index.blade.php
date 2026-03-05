@@ -8,12 +8,12 @@
 @section('content')
 <div class="row">
     @include('dashboard.partials.stats')
-    
+
     <div class="col-12">
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-header">
                 <h3 class="card-title font-weight-bold">
-                Quick Actions
+                    Quick Actions
                 </h3>
             </div>
             <div class="card-body">
@@ -23,8 +23,8 @@
                     {{-- 1. Buat CPB --}}
                     @can('create', App\Models\CPB::class)
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('cpb.create') }}" class="btn btn-app bg-success d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
-                            <i class="fas fa-plus"></i> Buat CPB
+                        <a href="{{ route('cpb.create') }}" class="btn btn-app bg-white d-block w-100 m-0 py-3 shadow-sm h-100 border text-dark">
+                            <i class="fas fa-plus text-success"></i> Buat CPB
                         </a>
                     </div>
                     @endcan
@@ -32,74 +32,73 @@
                     {{-- 2. Rework - Filter Rework=true --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
                         {{-- Hapus 'status' => 'rework' dari route --}}
-                        <a href="{{ route('cpb.index', ['rework' => 'true']) }}" 
-                        class="btn btn-app bg-warning d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
+                        <a href="{{ route('cpb.index', ['rework' => 'true']) }}"
+                            class="btn btn-app bg-white d-block w-100 m-0 py-3 shadow-sm h-100 border text-dark">
                             @php
-                                $reworkQuery = \App\Models\CPB::where('is_rework', true);
-                                if (!$user->isSuperAdmin() && !$user->isQA() && !$user->isRND()) {
-                                    $reworkQuery->where(function($q) use ($user) {
-                                        $q->where('status', $user->role)->orWhere('created_by', $user->id);
-                                    });
-                                }
-                                $reworkCount = $reworkQuery->count();
+                            $reworkQuery = \App\Models\CPB::where('is_rework', true);
+                            if (!$user->isSuperAdmin() && !$user->isQA() && !$user->isRND()) {
+                            $reworkQuery->where(function($q) use ($user) {
+                            $q->where('status', $user->role)->orWhere('created_by', $user->id);
+                            });
+                            }
+                            $reworkCount = $reworkQuery->count();
                             @endphp
-                            
+
                             @if($reworkCount > 0)
-                                <span class="badge badge-light border text-dark">{{ $reworkCount }}</span>
+                            <span class="badge badge-light border text-dark">{{ $reworkCount }}</span>
                             @endif
-                            <i class="fas fa-undo text-light"></i> 
-                            <span class="text-light font-weight-bold">Rework</span>
+                            <i class="fas fa-undo text-warning"></i>
+                            <span class="font-weight-bold">Rework</span>
                         </a>
                     </div>
 
                     {{-- 3. Overdue --}}
                     {{-- Quick Action Overdue --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'active']) }}" 
-                        class="btn btn-app bg-danger d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
+                        <a href="{{ route('cpb.index', ['overdue' => 'true', 'status' => 'active']) }}"
+                            class="btn btn-app bg-white d-block w-100 m-0 py-3 shadow-sm h-100 border text-dark">
                             @php
-                                // Menghitung jumlah yang overdue dan belum released untuk badge
-                                $overdueCount = \App\Models\CPB::where('is_overdue', true)
-                                    ->where('status', '!=', 'released');
+                            // Menghitung jumlah yang overdue dan belum released untuk badge
+                            $overdueCount = \App\Models\CPB::where('is_overdue', true)
+                            ->where('status', '!=', 'released');
 
-                                // Filter role agar user biasa hanya melihat jumlah miliknya
-                                if (!auth()->user()->isSuperAdmin() && !auth()->user()->isQA() && auth()->user()->role !== 'rnd') {
-                                    $overdueCount->where(function($q) {
-                                        $q->where('current_department_id', auth()->id())
-                                        ->orWhereHas('handoverLogs', function($sub) {
-                                            $sub->where('handed_by', auth()->id())
-                                                ->orWhere('received_by', auth()->id());
-                                        });
-                                    });
-                                }
-                                $count = $overdueCount->count();
+                            // Filter role agar user biasa hanya melihat jumlah miliknya
+                            if (!auth()->user()->isSuperAdmin() && !auth()->user()->isQA() && auth()->user()->role !== 'rnd') {
+                            $overdueCount->where(function($q) {
+                            $q->where('current_department_id', auth()->id())
+                            ->orWhereHas('handoverLogs', function($sub) {
+                            $sub->where('handed_by', auth()->id())
+                            ->orWhere('received_by', auth()->id());
+                            });
+                            });
+                            }
+                            $count = $overdueCount->count();
                             @endphp
 
                             @if($count > 0)
-                                <span class="badge badge-light border text-dark">{{ $count }}</span>
+                            <span class="badge badge-light border text-dark">{{ $count }}</span>
                             @endif
-                            <i class="fas fa-exclamation-triangle text-light"></i> 
-                            <span class="text-white font-weight-bold">Overdue</span>
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                            <span class="font-weight-bold">Overdue</span>
                         </a>
                     </div>
 
                     {{-- 4. Notifikasi --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('notifications.index') }}" class="btn btn-app bg-info d-block w-100 m-0 py-3 shadow-sm h-100 border-0">
+                        <a href="{{ route('notifications.index') }}" class="btn btn-app bg-white d-block w-100 m-0 py-3 shadow-sm h-100 border text-dark">
                             @php $unreadCount = $user->unreadNotifications()->count(); @endphp
                             @if($unreadCount > 0)
-                                <span class="badge badge-light">{{ $unreadCount }}</span>
+                            <span class="badge badge-light">{{ $unreadCount }}</span>
                             @endif
-                            <i class="fas fa-bell"></i> Notifikasi
+                            <i class="fas fa-bell text-info"></i> Notifikasi
                         </a>
                     </div>
 
                     {{-- 5. Laporan --}}
                     <div class="col-lg-2-4 col-md-4 col-6 mb-3">
-                        <a href="{{ route('reports.index') }}" 
-                        class="btn btn-app bg-teal d-block w-100 m-0 py-3 shadow-sm border-0 h-100">
-                            <i class="fas fa-file-invoice text-white"></i> 
-                            <span class="text-white font-weight-bold">Semua Laporan</span>
+                        <a href="{{ route('reports.index') }}" class="btn btn-app bg-white d-block w-100 m-0 py-3 shadow-sm h-100 border text-dark">
+                            <i class="fas fa-file-invoice text-secondary"></i>
+                            <span class="font-weight-bold">Semua Laporan</span>
                         </a>
                     </div>
                 </div>
@@ -136,36 +135,38 @@
                         </thead>
                         <tbody>
                             @forelse($cpbs as $cpb)
-                                <tr class="{{ $cpb->is_overdue ? 'table-danger' : ($cpb->is_rework ? 'table-warning' : '') }} cpb-row" 
-                                    data-batch="{{ strtolower($cpb->batch_number) }}">
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <strong>{{ $cpb->batch_number }}</strong>
-                                            @if($cpb->is_rework)
-                                                <span class="badge bg-orange ml-2" title="Alasan: {{ $cpb->rework_note }}"><i class="fas fa-undo"></i> REWORK</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td><span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }}">{{ ucfirst($cpb->type) }}</span></td>
-                                    <td>{{ $cpb->product_name }}</td>
-                                    <td>{!! $cpb->status_badge !!}</td>
-                                    <td>
-                                        @php
-                                            $percentage = ($cpb->time_limit > 0) ? min(100, ($cpb->duration_in_current_status / $cpb->time_limit) * 100) : 0;
-                                            $color = $cpb->is_overdue ? 'danger' : ($percentage > 80 ? 'warning' : 'success');
-                                        @endphp
-                                        <div class="progress progress-xs">
-                                            <div class="progress-bar bg-{{ $color }}" style="width: {{ $percentage }}%"></div>
-                                        </div>
-                                        <small>{{ $cpb->duration_in_current_status }}/{{ $cpb->time_limit }} jam</small>
-                                    </td>
-                                    <td>{!! $cpb->time_status_badge !!}</td>
-                                    <td>
-                                        <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a>
-                                    </td>
-                                </tr>
+                            <tr class="{{ $cpb->is_overdue ? 'table-danger' : ($cpb->is_rework ? 'table-warning' : '') }} cpb-row"
+                                data-batch="{{ strtolower($cpb->batch_number) }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <strong>{{ $cpb->batch_number }}</strong>
+                                        @if($cpb->is_rework)
+                                        <span class="badge bg-orange ml-2" title="Alasan: {{ $cpb->rework_note }}"><i class="fas fa-undo"></i> REWORK</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td><span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }}">{{ ucfirst($cpb->type) }}</span></td>
+                                <td>{{ $cpb->product_name }}</td>
+                                <td>{!! $cpb->status_badge !!}</td>
+                                <td>
+                                    @php
+                                    $percentage = ($cpb->time_limit > 0) ? min(100, ($cpb->duration_in_current_status / $cpb->time_limit) * 100) : 0;
+                                    $color = $cpb->is_overdue ? 'danger' : ($percentage > 80 ? 'warning' : 'success');
+                                    @endphp
+                                    <div class="progress progress-xs">
+                                        <div class="progress-bar bg-{{ $color }}" style="width: {{ $percentage }}%"></div>
+                                    </div>
+                                    <small>{{ $cpb->duration_in_current_status }}/{{ $cpb->time_limit }} jam</small>
+                                </td>
+                                <td>{!! $cpb->time_status_badge !!}</td>
+                                <td>
+                                    <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a>
+                                </td>
+                            </tr>
                             @empty
-                                <tr><td colspan="7" class="text-center py-5">Tidak ada CPB aktif</td></tr>
+                            <tr>
+                                <td colspan="7" class="text-center py-5">Tidak ada CPB aktif</td>
+                            </tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -195,23 +196,25 @@
 
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h3 class="card-title">Handover Terbaru</h3></div>
+            <div class="card-header">
+                <h3 class="card-title">Handover Terbaru</h3>
+            </div>
             <div class="card-body">
                 <div class="timeline">
                     @php
-                        $recentHandovers = \App\Models\HandoverLog::where('handed_by', auth()->id())->orWhere('received_by', auth()->id())
-                            ->orderBy('handed_at', 'desc')->take(5)->get();
+                    $recentHandovers = \App\Models\HandoverLog::where('handed_by', auth()->id())->orWhere('received_by', auth()->id())
+                    ->orderBy('handed_at', 'desc')->take(5)->get();
                     @endphp
                     @foreach($recentHandovers as $handover)
-                        <div class="time-label"><span class="bg-info">{{ $handover->handed_at->format('d M') }}</span></div>
-                        <div>
-                            <i class="fas fa-exchange-alt bg-blue"></i>
-                            <div class="timeline-item">
-                                <span class="time"><i class="fas fa-clock"></i> {{ $handover->handed_at->format('H:i') }}</span>
-                                <h3 class="timeline-header"><strong>{{ $handover->sender->name }}</strong> → <strong>{{ $handover->receiver->name ?? 'System' }}</strong></h3>
-                                <div class="timeline-body">{{ $handover->cpb->batch_number }} - {{ $handover->from_status }} → {{ $handover->to_status }}</div>
-                            </div>
+                    <div class="time-label"><span class="bg-info">{{ $handover->handed_at->format('d M') }}</span></div>
+                    <div>
+                        <i class="fas fa-exchange-alt bg-blue"></i>
+                        <div class="timeline-item">
+                            <span class="time"><i class="fas fa-clock"></i> {{ $handover->handed_at->format('H:i') }}</span>
+                            <h3 class="timeline-header"><strong>{{ $handover->sender->name }}</strong> → <strong>{{ $handover->receiver->name ?? 'System' }}</strong></h3>
+                            <div class="timeline-body">{{ $handover->cpb->batch_number }} - {{ $handover->from_status }} → {{ $handover->to_status }}</div>
                         </div>
+                    </div>
                     @endforeach
                 </div>
             </div>
@@ -220,7 +223,9 @@
 
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h3 class="card-title">Statistik Departemen</h3></div>
+            <div class="card-header">
+                <h3 class="card-title">Statistik Departemen</h3>
+            </div>
             <div class="card-body">
                 <canvas id="departmentChart" height="200"></canvas>
             </div>
@@ -232,9 +237,28 @@
 @push('styles')
 <style>
     /* CSS Match Parent & 5 Columns Desktop */
-    .col-lg-2-4 { position: relative; width: 100%; padding-right: 7.5px; padding-left: 7.5px; flex: 0 0 20%; max-width: 20%; }
-    @media (max-width: 992px) { .col-lg-2-4 { flex: 0 0 33.33%; max-width: 33.33%; } }
-    @media (max-width: 576px) { .col-lg-2-4 { flex: 0 0 50%; max-width: 50%; } }
+    .col-lg-2-4 {
+        position: relative;
+        width: 100%;
+        padding-right: 7.5px;
+        padding-left: 7.5px;
+        flex: 0 0 20%;
+        max-width: 20%;
+    }
+
+    @media (max-width: 992px) {
+        .col-lg-2-4 {
+            flex: 0 0 33.33%;
+            max-width: 33.33%;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .col-lg-2-4 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
 
     .btn-app {
         position: relative;
@@ -250,45 +274,93 @@
         align-items: center;
         transition: transform 0.2s, box-shadow 0.2s;
     }
-    .btn-app:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
-    .btn-app > .fas { font-size: 26px !important; margin-bottom: 10px; display: block; }
-    .btn-app > .badge { position: absolute; top: -5px; right: -5px; font-size: 12px; padding: 4px 8px; border-radius: 50px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-    .bg-warning.btn-app { color: #1f2d3d !important; }
+
+    .btn-app:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .btn-app>.fas {
+        font-size: 26px !important;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    .btn-app>.badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 50px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .bg-warning.btn-app {
+        color: #1f2d3d !important;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-$(document).ready(function() {
-    // Live Search Table
-    $('#search-cpb').on('keyup', function() {
-        const term = $(this).val().toLowerCase();
-        $('.cpb-row').each(function() {
-            $(this).toggle($(this).data('batch').includes(term));
+    $(document).ready(function() {
+        // Live Search Table
+        $('#search-cpb').on('keyup', function() {
+            const term = $(this).val().toLowerCase();
+            $('.cpb-row').each(function() {
+                $(this).toggle($(this).data('batch').includes(term));
+            });
+        });
+
+        // Department Chart
+        @php
+        $stats = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa_final', 'released'];
+        $chartData = [];
+        foreach($stats as $s) {
+            $chartData[] = \App\Models\CPB::where('status', $s)->count();
+        }
+        @endphp
+        const ctx = document.getElementById('departmentChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['RND', 'QA', 'PPIC', 'WH', 'Produksi', 'QC', 'QA Final', 'Released'],
+                datasets: [{
+                    label: 'Jumlah CPB',
+                    data: @json($chartData),
+                    backgroundColor: [
+                        '#E5E7EB', // RND (Abu-abu terang)
+                        '#D1D5DB', // QA 
+                        '#9CA3AF', // PPIC
+                        '#6B7280', // WH
+                        '#34D399', // Produksi (Mulai masuk gradasi hijau)
+                        '#10B981', // QC
+                        '#059669', // QA Final
+                        '#047857' // Released (Hijau tua/tegas)
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
         });
     });
-
-    // Department Chart
-    @php
-        $stats = ['rnd','qa','ppic','wh','produksi','qc','qa_final','released'];
-        $chartData = [];
-        foreach($stats as $s) { $chartData[] = \App\Models\CPB::where('status', $s)->count(); }
-    @endphp
-    const ctx = document.getElementById('departmentChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['RND', 'QA', 'PPIC', 'WH', 'Produksi', 'QC', 'QA Final', 'Released'],
-            datasets: [{
-                label: 'Jumlah CPB',
-                data: @json($chartData),
-                backgroundColor: ['#007bff', '#17a2b8', '#6c757d', '#343a40', '#ffc107', '#17a2b8', '#28a745', '#20c997'],
-                borderWidth: 1
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
-    });
-});
 </script>
 @endpush

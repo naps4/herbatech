@@ -1,23 +1,28 @@
 <nav class="main-header navbar navbar-expand-md navbar-dark navbar-custom-green shadow-sm border-0">
-    <div class="container-fluid px-md-4"> {{-- Menggunakan fluid agar lebih luas dan konsisten dengan halaman profil/user --}}
+    <div class="container-fluid px-4 d-flex align-items-center justify-content-between">{{-- Menggunakan fluid agar lebih luas dan konsisten dengan halaman profil/user --}}
 
         <a href="{{ route('dashboard') }}" class="navbar-brand d-flex align-items-center">
             @if(isset($app_settings['app_logo']) && $app_settings['app_logo'])
             <img src="{{ Storage::url($app_settings['app_logo']) }}?v={{ time() }}"
                 alt="App Logo"
                 class="elevation-2 mr-2"
-                style="height: 35px; width: 60px; object-fit: cover; border-radius: 50% / 50%; border: 1px solid rgba(255,255,255,0.2);">
+                style="height: 28px; width: 28px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
             @else
             <img src="{{ asset('vendor/adminlte/dist/img/AdminLTELogo.png') }}" alt="CPB Logo" class="brand-image img-circle elevation-2 mr-2" style="max-height: 33px;">
             @endif
             <span class="brand-text font-weight-bold">{{ $app_settings['app_name'] ?? 'CPB System' }}</span>
         </a>
 
-        <button class="navbar-toggler order-1" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#sidebarMenu"
+            aria-controls="sidebarMenu"
+            aria-expanded="false"
+            aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <div class="collapse navbar-collapse order-3" id="navbarCollapse">
+        <div class="collapse navbar-collapse order-3 d-none d-lg-flex" id="navbarCollapse">
             <ul class="navbar-nav ml-2"> {{-- Sedikit margin kiri agar tidak menempel logo --}}
                 @auth
                 <li class="nav-item mx-lg-4">
@@ -139,7 +144,7 @@
 
         <ul class="order-1 order-md-3 navbar-nav navbar-no-expand ml-auto align-items-center">
             @auth
-            <li class="nav-item d-none d-lg-block mr-2">
+            <li class="nav-item d-none d-md-block mr-2">
                 <form class="form-inline ml-0 ml-md-3 align-items-center" action="{{ route('cpb.index') }}" method="GET" style="height: 38px;">
                     {{-- hapus d-none agar selalu muncul, atau sesuaikan container --}}
                     <div class="input-group input-group-sm rounded-pill px-2 border search-container-navbar">
@@ -157,6 +162,27 @@
                         </div>
                     </div>
                 </form>
+            </li>
+
+            <li class="nav-item d-md-none">
+                <a class="nav-link" data-toggle="dropdown" href="#">
+                    <i class="fas fa-search"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right p-3">
+                    <form action="{{ route('cpb.index') }}" method="GET">
+                        <div class="input-group input-group-sm">
+                            <input type="search"
+                                name="batch_number"
+                                class="form-control"
+                                placeholder="Cari No. Batch...">
+                            <div class="input-group-append">
+                                <button class="btn btn-success">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </li>
 
             <li class="nav-item dropdown mx-1">
@@ -225,151 +251,121 @@
 </form>
 
 <style>
-    /* Professional PT Navbar Styling */
+    /* ==============================
+   NAVBAR CUSTOM GREEN FIXED
+============================== */
+
+    /* Target navbar kamu */
     .navbar-custom-green {
-        background: linear-gradient(135deg, rgb(60, 114, 75) 0%, rgb(86, 204, 92) 100%) !important;
+        background: linear-gradient(135deg,rgb(17, 115, 46) 0%,rgb(37, 194, 97) 100%) !important;
+        padding: 0.6rem 1.2rem;
+        min-height: 64px;
     }
 
-    .nav-link {
-        letter-spacing: 0.3px;
-        transition: all 0.2s;
+    /* Collapse biar sejajar */
+    .navbar-custom-green .navbar-collapse {
+        display: flex;
+        align-items: center;
     }
 
-    .nav-link:hover {
-        opacity: 0.85;
-        transform: translateY(-1px);
+    /* Menu kiri */
+    .navbar-custom-green .navbar-nav {
+        align-items: center;
+        gap: 6px;
     }
 
-    .tracking-tight {
-        letter-spacing: -0.5px;
+    /* Nav item */
+    .navbar-custom-green .nav-item {
+        display: flex;
+        align-items: center;
     }
 
-    .shadow-xs {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    /* Link menu */
+    .navbar-custom-green .nav-link {
+        font-size: 0.88rem;
+        font-weight: 500;
+        padding: 8px 14px !important;
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.75) !important;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        height: 40px;
+        transition: all 0.2s ease;
     }
 
-    .line-height-1 {
-        line-height: 1.1;
-    }
-
-    .bg-light-soft {
+    .navbar-custom-green .nav-link:hover {
         background: rgba(255, 255, 255, 0.12);
+        color: #ffffff !important;
     }
 
-    .bg-primary-soft {
-        background-color: #e8f0fe;
+    .navbar-custom-green .nav-link.active {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff !important;
+        font-weight: 600;
     }
 
-    .badge-primary-soft {
-        background-color: #e8f0fe;
-        border: 1px solid #d2e3fc;
+    /* Brand */
+    .navbar-custom-green .navbar-brand {
+        margin-right: 24px;
     }
 
-    /* Avatar Style */
+    .navbar-custom-green .brand-text {
+        font-size: 1rem;
+        color: #ffffff !important;
+    }
+
+    /* Search container */
+    .search-container-navbar {
+        height: 34px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+        padding-left: 10px;
+        padding-right: 6px;
+        border: none !important;
+    }
+
+    .search-container-navbar input {
+        height: 30px;
+        font-size: 0.85rem;
+    }
+
+    /* Notifikasi badge */
+    .navbar-badge {
+        background: #facc15 !important;
+        color: #1e293b !important;
+        font-weight: 600;
+    }
+
+    /* Avatar */
     .avatar-nav {
-        width: 32px;
-        height: 32px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 6px;
+        width: 34px;
+        height: 34px;
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
-        font-size: 14px;
-        color: white;
+        font-weight: 700;
+        color: #ffffff;
     }
 
-    .avatar-lg {
-        width: 60px;
-        height: 60px;
-        background: #e2e8f0;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 24px;
-        color: #475569;
+    /* Supaya Dashboard tidak turun */
+    .navbar-custom-green .nav-link i {
+        margin-right: 6px;
     }
 
-    .dropdown-header {
-        font-size: 10px;
-        color: #94a3b8;
-        letter-spacing: 1px;
-        padding: 10px 20px;
-    }
-
-    .dropdown-item {
-        font-size: 13px;
-        transition: background 0.2s;
-    }
-
-    /* Mengubah warna placeholder untuk semua browser */
-    .form-control::placeholder {
-        color: rgba(255, 255, 255, 0.7) !important;
-        /* Warna putih dengan transparansi 70% */
-        opacity: 1;
-        /* Diperlukan untuk Firefox */
-    }
-
-    /* Spesifik untuk Chrome, Safari, dan Edge */
-    .form-control::-webkit-input-placeholder {
-        color: rgba(255, 255, 255, 0.7) !important;
-    }
-
-    /* Spesifik untuk Internet Explorer 10-11 */
-    .form-control:-ms-input-placeholder {
-        color: rgba(255, 255, 255, 0.7) !important;
-    }
-
-    /* Penyesuaian Responsif */
     @media (max-width: 768px) {
-
-        /* Memastikan logo dan tombol toggle sejajar */
-        .navbar-brand {
-            font-size: 1rem;
-            margin-right: 0;
+        .main-sidebar {
+            font-size: 0.85rem;
         }
 
-        /* Menyesuaikan menu dropdown agar tidak terlalu lebar di mobile */
-        .dropdown-menu-lg {
-            min-width: 280px !important;
-        }
-
-        /* Search bar menyesuaikan lebar saat menu dibuka di mobile */
-        .form-inline {
-            display: flex !important;
-            width: 100%;
-            margin: 10px 0 !important;
-        }
-
-        .form-inline .input-group {
-            width: 100% !important;
-        }
-
-        /* Memberikan jarak antar item menu di mobile */
-        .navbar-nav .nav-item {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Menghilangkan border-left pada profil user di mobile */
-        .border-left {
-            border-left: none !important;
-            padding-left: 0 !important;
-            margin-top: 10px;
-        }
-    }
-
-    /* Memperbaiki tampilan avatar di menu profil saat mobile */
-    @media (max-width: 576px) {
-        .avatar-nav {
-            width: 28px;
-            height: 28px;
+        .nav-sidebar .nav-link {
+            padding: 6px 10px;
         }
 
         .brand-text {
-            display: none;
-            /* Sembunyikan nama aplikasi di layar sangat kecil agar tidak sumpek */
+            font-size: 0.9rem;
         }
     }
 </style>

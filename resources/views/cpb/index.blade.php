@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('page-title')
-    {{-- Bagian ini dikosongkan agar tidak muncul double header di atas card --}}
+{{-- Bagian ini dikosongkan agar tidak muncul double header di atas card --}}
 @endsection
 
 @section('content')
@@ -58,9 +58,9 @@
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label for="batch_number">No. Batch</label>
-                                <input type="text" name="batch_number" id="batch_number" 
-                                       class="form-control" value="{{ request('batch_number') }}" 
-                                       placeholder="Cari nomor batch...">
+                                <input type="text" name="batch_number" id="batch_number"
+                                    class="form-control" value="{{ request('batch_number') }}"
+                                    placeholder="Cari nomor batch...">
                             </div>
                         </div>
                     </div>
@@ -109,87 +109,87 @@
                         </thead>
                         <tbody>
                             @forelse($cpbs as $cpb)
-                                <tr>
-                                    <td class="pl-4 align-middle">
-                                        <span class="font-weight-bold text-primary">{{ $cpb->batch_number }}</span>
-                                    </td>
-                                    <td class="align-middle">
-                                        <span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }} px-2 py-1">
-                                            {{ ucfirst($cpb->type) }}
-                                        </span>
-                                    </td>
-                                    <td class="align-middle">{{ $cpb->product_name }}</td>
-                                    <td class="align-middle">
-                                        {!! $cpb->status_badge !!}
-                                        
-                                        @php
-                                            $isActuallyInThisDept = ($cpb->status === auth()->user()->role);
-                                            $isManagement = (auth()->user()->isSuperAdmin() || auth()->user()->isQA());
-                                        @endphp
+                            <tr>
+                                <td class="pl-4 align-middle">
+                                    <span class="font-weight-bold text-primary">{{ $cpb->batch_number }}</span>
+                                </td>
+                                <td class="align-middle">
+                                    <span class="badge {{ $cpb->type == 'pengolahan' ? 'bg-info' : 'bg-primary' }} px-2 py-1">
+                                        {{ ucfirst($cpb->type) }}
+                                    </span>
+                                </td>
+                                <td class="align-middle">{{ $cpb->product_name }}</td>
+                                <td class="align-middle">
+                                    {!! $cpb->status_badge !!}
 
-                                        {{-- Munculkan label jika batch sudah pindah dari PPIC/WH/Produksi/QC --}}
-                                        @if(!$isManagement && !$isActuallyInThisDept && $cpb->status !== 'released')
+                                    @php
+                                    $isActuallyInThisDept = ($cpb->status === auth()->user()->role);
+                                    $isManagement = (auth()->user()->isSuperAdmin() || auth()->user()->isQA());
+                                    @endphp
+
+                                    {{-- Munculkan label jika batch sudah pindah dari PPIC/WH/Produksi/QC --}}
+                                    @if(!$isManagement && !$isActuallyInThisDept && $cpb->status !== 'released')
+                                    @endif
+                                </td>
+                                <td class="align-middle text-sm text-dark">
+                                    <i class="fas fa-user-circle text-muted mr-1"></i>
+                                    {{ $cpb->currentDepartment->name ?? '-' }}
+                                </td>
+                                <td class="align-middle">
+                                    @if($cpb->is_overdue)
+                                    <span class="badge badge-danger shadow-xs">
+                                        <i class="fas fa-clock mr-1"></i> OVERDUE
+                                    </span>
+                                    @else
+                                    <span class="badge badge-success shadow-xs">ON TIME</span>
+                                    @endif
+                                </td>
+                                <td class="text-right pr-4 align-middle">
+                                    <div class="btn-group">
+                                        {{-- 1. Detail --}}
+                                        <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-sm btn-light border text-muted" title="Lihat Detail">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+
+                                        {{-- 2. Edit (Hanya RND di awal) --}}
+                                        @if($cpb->status == 'rnd' && auth()->id() == $cpb->created_by)
+                                        <a href="{{ route('cpb.edit', $cpb) }}" class="btn btn-sm btn-light border text-muted" title="Edit Data">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                         @endif
-                                    </td>
-                                    <td class="align-middle text-sm text-dark">
-                                        <i class="fas fa-user-circle text-muted mr-1"></i>
-                                        {{ $cpb->currentDepartment->name ?? '-' }}
-                                    </td>
-                                    <td class="align-middle">
-                                        @if($cpb->is_overdue)
-                                            <span class="badge badge-danger shadow-xs">
-                                                <i class="fas fa-clock mr-1"></i> OVERDUE
-                                            </span>
-                                        @else
-                                            <span class="badge badge-success shadow-xs">ON TIME</span>
+
+                                        {{-- 3. Handover --}}
+                                        @can('handover', $cpb)
+                                        @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
+                                        <a href="{{ route('handover.create', $cpb) }}" class="btn btn-sm btn-light border text-muted" title="Serah Terima CPB">
+                                            <i class="fas fa-forward"></i>
+                                        </a>
                                         @endif
-                                    </td>
-                                    <td class="text-right pr-4 align-middle">
-                                        <div class="btn-group">
-                                            {{-- 1. Detail --}}
-                                            <a href="{{ route('cpb.show', $cpb) }}" class="btn btn-sm btn-outline-info" title="Lihat Detail">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
+                                        @endcan
 
-                                            {{-- 2. Edit (Hanya RND di awal) --}}
-                                            @if($cpb->status == 'rnd' && auth()->id() == $cpb->created_by)
-                                                <a href="{{ route('cpb.edit', $cpb) }}" class="btn btn-sm btn-outline-warning" title="Edit Data">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                            @endif
-
-                                            {{-- 3. Handover --}}
-                                            @can('handover', $cpb)
-                                                @if(!($cpb->status === 'qa' && $cpb->is_final_qa))
-                                                <a href="{{ route('handover.create', $cpb) }}" class="btn btn-sm btn-outline-success" title="Serah Terima CPB">
-                                                    <i class="fas fa-forward"></i>
-                                                </a>
-                                                @endif
-                                            @endcan
-
-                                            {{-- 4. Release --}}
-                                            @if($cpb->status === 'qa' && $cpb->is_final_qa)
-                                                @can('release', $cpb)
-                                                    <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="d-inline ms-1">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-primary" 
-                                                                title="Luluskan Produk (Release)" 
-                                                                onclick="return confirm('Konfirmasi Release Batch {{ $cpb->batch_number }}?')">
-                                                            <i class="fas fa-check-double"></i>
-                                                        </button>
-                                                    </form>
-                                                @endcan
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
+                                        {{-- 4. Release (Satu-satunya yang menonjol dengan warna Hijau) --}}
+                                        @if($cpb->status === 'qa' && $cpb->is_final_qa)
+                                        @can('release', $cpb)
+                                        <form action="{{ route('cpb.release', $cpb) }}" method="POST" class="d-inline ms-1">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-success shadow-sm"
+                                                title="Luluskan Produk (Release)"
+                                                onclick="return confirm('Konfirmasi Release Batch {{ $cpb->batch_number }}?')">
+                                                <i class="fas fa-check-double"></i> Release
+                                            </button>
+                                        </form>
+                                        @endcan
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
                             @empty
-                                <tr>
-                                    <td colspan="7" class="text-center py-5 text-muted">
-                                        <i class="fas fa-inbox fa-3x mb-3 opacity-20"></i>
-                                        <p>Tidak ada data CPB yang ditemukan.</p>
-                                    </td>
-                                </tr>
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="fas fa-inbox fa-3x mb-3 opacity-20"></i>
+                                    <p>Tidak ada data CPB yang ditemukan.</p>
+                                </td>
+                            </tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -215,11 +215,32 @@
 
 @push('styles')
 <style>
-    .pagination { margin-bottom: 0; }
-    .page-item.active .page-link { background-color: #007bff; border-color: #007bff; }
-    .table td, .table th { vertical-align: middle; white-space: nowrap; }
-    .opacity-20 { opacity: 0.2; }
-    .shadow-xs { box-shadow: 0 1px 2px rgba(0,0,0,0.075); }
-    .badge-light.border { border: 1px solid #dee2e6 !important; background-color: #f8f9fa; }
+    .pagination {
+        margin-bottom: 0;
+    }
+
+    .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .table td,
+    .table th {
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .opacity-20 {
+        opacity: 0.2;
+    }
+
+    .shadow-xs {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.075);
+    }
+
+    .badge-light.border {
+        border: 1px solid #dee2e6 !important;
+        background-color: #f8f9fa;
+    }
 </style>
 @endpush

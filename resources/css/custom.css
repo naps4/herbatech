@@ -9,9 +9,15 @@
 }
 
 @keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 /* Timeline styling */
@@ -22,7 +28,7 @@
 }
 
 .cpb-timeline::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 20px;
     top: 0;
@@ -51,7 +57,7 @@
 }
 
 .timeline-step.active .timeline-step-icon {
-    background: #007bff;
+    background: #10b981; /* Ganti dengan hijau utama */
     animation: pulse 2s infinite;
 }
 
@@ -60,9 +66,15 @@
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    } /* Ganti dengan nilai RGB dari #10B981 */
+    70% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
 }
 
 /* Table styling */
@@ -80,7 +92,7 @@
 
 /* Card styling */
 .card-cpb {
-    border-top: 3px solid #007bff;
+    border-top: 3px solid #10b981; /* Ganti dengan hijau utama */
 }
 
 .card-cpb-overdue {
@@ -119,11 +131,11 @@
     .table-responsive {
         font-size: 14px;
     }
-    
+
     .btn-group {
         flex-direction: column;
     }
-    
+
     .btn-group .btn {
         margin-bottom: 5px;
         width: 100%;
@@ -135,7 +147,7 @@
     .no-print {
         display: none !important;
     }
-    
+
     .table-cpb {
         font-size: 12px;
     }

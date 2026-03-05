@@ -1,7 +1,15 @@
-// Body
-$body-bg: #f8fafc;
+// Palet Warna Manajemen Profesional
+$primary: #10b981; // Hijau Zamrud (Warna Utama)
+$secondary: #6b7280; // Abu-abu netral untuk tombol batal/kembali
+$success: #059669; // Hijau gelap untuk status sukses
+$danger: #ef4444; // Merah untuk error/overdue
+$warning: #f59e0b; // Kuning/Oranye untuk peringatan
+$info: #3b82f6; // Biru untuk informasi (opsional)
 
-// Typography
-$font-family-sans-serif: 'Nunito', sans-serif;
-$font-size-base: 0.9rem;
-$line-height-base: 1.6;
+// Latar Belakang
+$body-bg: #f9fafb; // Abu-abu sangat terang yang bersih
+
+// Konsistensi Komponen (Bentuk membulat tapi tegas)
+$border-radius: 0.25rem; // Set ke 4px agar bentuk kartu dan tombol konsisten
+$border-radius-lg: 0.3rem;
+$border-radius-sm: 0.2rem;
