@@ -172,6 +172,18 @@
     .search-container-navbar { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.2) !important; }
     .custom-placeholder::placeholder { color: rgba(255, 255, 255, 0.6); }
 
+    .content-wrapper {
+        margin-top: 0 !important;
+    }
+    .content-header {
+        padding-top: 15px !important; 
+        padding-bottom: 0 !important;
+    }
+
+    .content-wrapper > .content {
+        padding-top: 10px !important;
+    }
+
     @media (max-width: 768px) {
         /* FLOATING MENU STYLE */
         #navbarCollapse {
