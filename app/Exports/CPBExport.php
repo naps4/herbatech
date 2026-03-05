@@ -6,8 +6,9 @@ use App\Models\CPB;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 
-class CPBExport implements FromCollection, WithHeadings
+class CPBExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $request;
     
@@ -18,46 +19,69 @@ class CPBExport implements FromCollection, WithHeadings
     
     public function collection()
     {
+        $user = auth()->user();
         $query = CPB::with(['creator', 'currentDepartment']);
         
+        // 1. TERAPKAN FILTER VISIBILITAS ROLE (Sama seperti di PDF & Web)
+        if (!$user->isSuperAdmin() && (!$user->isQA() || $user->role !== 'qa') && $user->role !== 'rnd') {
+            $query->where(function ($q) use ($user) {
+                $q->where('status', $user->role) // Dokumen sedang di departemen ini
+                    ->orWhere('created_by', $user->id)
+                    ->orWhereHas('handoverLogs', function ($subQuery) use ($user) {
+                        $subQuery->where('from_status', $user->role) // Pernah melewati departemen ini
+                            ->orWhere('to_status', $user->role);
+                    });
+            });
+        }
+        
         if ($this->request) {
-            // Filter berdasarkan tanggal
-            if ($this->request->start_date) {
+            // 2. Filter berdasarkan tanggal
+            if ($this->request->filled('start_date')) {
                 $query->whereDate('created_at', '>=', $this->request->start_date);
             }
-            if ($this->request->end_date) {
+            if ($this->request->filled('end_date')) {
                 $query->whereDate('created_at', '<=', $this->request->end_date);
             }
             
-            // Filter lainnya
-            if ($this->request->type && $this->request->type != 'all') {
+            // 3. Filter lainnya
+            if ($this->request->filled('type') && $this->request->type != 'all') {
                 $query->where('type', $this->request->type);
             }
-            if ($this->request->status && $this->request->status != 'all') {
+            if ($this->request->filled('status') && $this->request->status != 'all') {
                 $query->where('status', $this->request->status);
             }
-            if ($this->request->overdue && $this->request->overdue != 'all') {
-                $query->where('is_overdue', $this->request->overdue == 'yes');
+            
+            // 4. Perbaikan Filter Overdue (Tangani jika value 'true' atau 'yes')
+            if ($this->request->filled('overdue') && $this->request->overdue !== 'all') {
+                $isOverdue = in_array($this->request->overdue, ['yes', 'true', '1']);
+                $query->where('is_overdue', $isOverdue);
             }
         }
         
-        return $query->orderBy('created_at', 'desc')->get()->map(function($cpb) {
-            return [
-                'No. Batch' => $cpb->batch_number,
-                'Jenis' => $cpb->type == 'pengolahan' ? 'Pengolahan' : 'Pengemasan',
-                'Produk' => $cpb->product_name,
-                'Status' => $this->getStatusText($cpb->status),
-                'Lokasi' => $cpb->currentDepartment ? $cpb->currentDepartment->name : '-',
-                'Durasi Produksi' => $cpb->schedule_duration . ' jam',
-                'Durasi di Status' => $cpb->duration_in_current_status . ' jam',
-                'Batas Waktu' => $cpb->time_limit . ' jam',
-                'Status Waktu' => $cpb->is_overdue ? 'OVERDUE' : ($cpb->duration_in_current_status > $cpb->time_limit * 0.8 ? 'WARNING' : 'OK'),
-                'Dibuat Oleh' => $cpb->creator ? $cpb->creator->name : '-',
-                'Overdue' => $cpb->is_overdue ? 'Ya' : 'Tidak',
-                'Tanggal Dibuat' => $cpb->created_at->format('d/m/Y H:i'),
-                'Terakhir Update' => $cpb->updated_at->format('d/m/Y H:i'),
-            ];
-        });
+        // Kembalikan query secara langsung (TIDAK BOLEH pakai ->map() di sini)
+        return $query->orderBy('created_at', 'desc')->get();
+    }
+    
+    /**
+     * Format data per baris yang akan diexport ke Excel
+     */
+    public function map($cpb): array
+    {
+        return [
+            $cpb->batch_number,
+            $cpb->type == 'pengolahan' ? 'Pengolahan' : 'Pengemasan',
+            $cpb->product_name,
+            $this->getStatusText($cpb->status),
+            $cpb->currentDepartment ? $cpb->currentDepartment->name : '-',
+            $cpb->schedule_duration . ' jam',
+            $cpb->duration_in_current_status . ' jam',
+            $cpb->time_limit . ' jam',
+            $cpb->is_overdue ? 'OVERDUE' : ($cpb->duration_in_current_status > $cpb->time_limit * 0.8 ? 'WARNING' : 'OK'),
+            $cpb->creator ? $cpb->creator->name : '-',
+            $cpb->is_overdue ? 'Ya' : 'Tidak',
+            $cpb->created_at ? $cpb->created_at->format('d/m/Y H:i') : '-',
+            $cpb->updated_at ? $cpb->updated_at->format('d/m/Y H:i') : '-',
+        ];
     }
     
     public function headings(): array
@@ -92,6 +116,6 @@ class CPBExport implements FromCollection, WithHeadings
             'released' => 'Released'
         ];
         
-        return $statuses[$status] ?? $status;
+        return $statuses[$status] ?? strtoupper($status);
     }
 }

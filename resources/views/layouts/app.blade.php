@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 
@@ -11,16 +10,12 @@
     <link rel="icon" href="{{ Storage::url($app_settings['app_favicon']) }}?v={{ time() }}" type="image/x-icon">
     @endif
 
-    <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
 
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- AdminLTE -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
 
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 
     @stack('styles')
@@ -29,14 +24,9 @@
 <body class="hold-transition layout-top-nav layout-navbar-fixed">
     <div class="wrapper">
 
-        <!-- Navbar -->
         @include('layouts.navbar')
 
-        <!-- Sidebar Removed -->
-
-        <!-- Content Wrapper -->
         <div class="content-wrapper">
-            <!-- Content Header -->
             <div class="content-header">
                 <div class="container-fluid">
                     <div class="row mb-2">
@@ -52,7 +42,6 @@
                 </div>
             </div>
 
-            <!-- Main Content -->
             <section class="content">
                 <div class="container-fluid">
                     @if(session('success'))
@@ -74,28 +63,65 @@
             </section>
         </div>
 
-        <!-- Footer -->
         <footer class="main-footer">
             <strong>Copyright &copy; {{ date('Y') }} CPB Management System.</strong>
             All rights reserved.
         </footer>
     </div>
 
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <!-- Bootstrap 4 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- AdminLTE -->
     <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 
-    <!-- Custom JS
-    <script src="{{ asset('js/app.js') }}"></script> -->
-
-    <!-- versioning -->
     <script src="{{ asset('js/app.js') }}?v={{ time() }}"></script>
 
+    <script>
+        $(document).ready(function() {
+            
+            // 1. FITUR AUTO-CLOSE MENU MOBILE
+            // Menyembunyikan dropdown menu hp saat user klik di luar area navbar
+            $(document).click(function(event) {
+                var clickover = $(event.target);
+                // Cek apakah menu sedang terbuka (memiliki class 'show')
+                var isOpened = $("#navbarCollapse").hasClass("show");
+                
+                // Jika terbuka dan user mengklik elemen di luar navbar, maka tutup menu
+                if (isOpened === true && !clickover.closest('.navbar').length) {
+                    $("button.navbar-toggler").click();
+                }
+            });
+
+            // 2. FITUR AUTO-HIDE NAVBAR (SMART SCROLL)
+            // Menyembunyikan navbar saat scroll ke bawah, munculkan saat scroll ke atas
+            var lastScrollTop = 0;
+            var navbar = $('.main-header');
+            var navbarHeight = navbar.outerHeight();
+
+            $(window).scroll(function() {
+                var st = $(this).scrollTop();
+                
+                // Pastikan user sudah scroll melewati tinggi navbar
+                if (st > navbarHeight) {
+                    if (st > lastScrollTop) {
+                        // Scroll ke bawah -> Sembunyikan Navbar ke atas layar
+                        navbar.css({
+                            'transform': 'translateY(-100%)',
+                            'transition': 'transform 0.3s ease-in-out'
+                        });
+                    } else {
+                        // Scroll ke atas -> Munculkan kembali Navbar
+                        navbar.css({
+                            'transform': 'translateY(0)',
+                            'transition': 'transform 0.3s ease-in-out'
+                        });
+                    }
+                }
+                lastScrollTop = st;
+            });
+        });
+    </script>
     @stack('scripts')
 </body>
 

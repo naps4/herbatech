@@ -110,8 +110,13 @@ class CPB extends Model
     {
         if ($this->status !== 'qa') return false;
         
-        // Memeriksa riwayat log untuk melihat apakah sudah pernah melewati QC
-        return $this->handoverLogs()->where('from_status', 'qc')->exists();
+        $lastLog = $this->handoverLogs()->latest('handed_at')->first();
+        
+        if ($lastLog && $lastLog->from_status === 'qc' && $lastLog->to_status === 'qa') {
+            return true;
+        }
+
+        return false;
     }
 
     public function getTimeLimitAttribute()
@@ -225,30 +230,19 @@ class CPB extends Model
 
     public function getPreviousDepartment()
     {
-
         $flow = ['rnd', 'qa', 'ppic', 'wh', 'produksi', 'qc', 'qa', 'released'];
         $currentStatus = $this->status;
 
-        // KASUS 1: Jika status saat ini adalah QA (Ambiguitas Tahap 1 atau 2)
         if ($currentStatus === 'qa') {
-
             $hasPassedQC = $this->handoverLogs()->where('from_status', 'qc')->exists();
             return $hasPassedQC ? 'qc' : 'rnd';
         }
 
-        // KASUS 2: Jika status saat ini adalah Warehouse (wh)
-        if ($currentStatus === 'wh') {
-            return 'ppic';
-        }
-
-        // KASUS 3: Jika status saat ini adalah Released
-        if ($currentStatus === 'released') {
-            return 'qa';
-        }
         $currentIndex = array_search($currentStatus, $flow);
         if ($currentIndex !== false && $currentIndex > 0) {
             return $flow[$currentIndex - 1];
         }
+        
         return null;
     }
     

@@ -157,26 +157,53 @@ class HandoverController extends Controller
      * Menangani proses rework jika ditolak oleh QA
      */
     public function rework(Request $request, CPB $cpb)
-    {
-        $request->validate([
-            'target_status' => 'required',
-            'reason' => 'required|string|min:10',
-        ]);
-
-        // Cek permission khusus (Hanya QA atau Superadmin)
-        if (auth()->user()->role !== 'qa' && auth()->user()->role !== 'superadmin') {
-            return back()->with('error', 'Hanya bagian QA yang dapat memberikan instruksi rework.');
-        }
-
-        // Asumsi ada method rejectTo di model CPB
-        $cpb->update([
-            'status' => $request->target_status,
-            'is_rework' => true,
-            'rework_note' => $request->reason,
-            'entered_current_status_at' => now()
-        ]);
-
-        return redirect()->route('cpb.show', $cpb)
-            ->with('success', 'CPB telah berhasil dikembalikan ke bagian ' . strtoupper($request->target_status) . ' untuk rework.');
+{
+    $request->validate(['rework_note' => 'required|string|min:10']);
+    
+    $targetStatus = $cpb->getPreviousDepartment();
+    if (!$targetStatus) {
+        return back()->with('error', 'Tidak dapat dikembalikan ke departemen sebelumnya.');
     }
+    
+    // CARI USER: Ambil log di mana departemen tujuan MENERIMA batch ini
+    $lastHandler = $cpb->handoverLogs()
+        ->where('to_status', $targetStatus)
+        ->latest('handed_at')
+        ->first();
+
+    // Fallback logic yang benar berdasarkan ROLE
+    $receiverId = null;
+    if ($lastHandler && $lastHandler->received_by) {
+        $receiverId = $lastHandler->received_by;
+    } else {
+        $fallbackUser = User::where('role', $targetStatus)->first();
+        $receiverId = $fallbackUser ? $fallbackUser->id : $cpb->created_by;
+    }
+
+    DB::transaction(function() use ($cpb, $targetStatus, $receiverId, $request) {
+        $oldStatus = $cpb->status;
+        
+        $cpb->update([
+            'status' => $targetStatus,
+            'current_department_id' => $receiverId, // Kepemilikan pindah dengan benar
+            'entered_current_status_at' => now(),
+            'is_rework' => true,
+            'rework_note' => $request->rework_note,
+            'is_overdue' => false 
+        ]);
+
+        \App\Models\HandoverLog::create([
+            'cpb_id' => $cpb->id,
+            'from_status' => $oldStatus,
+            'to_status' => $targetStatus,
+            'handed_by' => auth()->id(),
+            'received_by' => $receiverId,
+            'handed_at' => now(),
+            'received_at' => now(),
+            'notes' => '[REWORK] ' . $request->rework_note
+        ]);
+    });
+
+    return redirect()->route('cpb.show', $cpb)->with('success', 'Batch dikembalikan ke ' . strtoupper($targetStatus));
+}
 }

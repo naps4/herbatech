@@ -24,8 +24,6 @@ class ReportController extends Controller
         $user = auth()->user();
         $query = CPB::query()->with(['creator', 'currentDepartment']);
 
-        // --- LOGIKA VISIBILITAS (Best Practice) ---
-        // Jika bukan SuperAdmin/QA, batasi data yang pernah dilewati atau sedang dipegang
         if (!$user->isSuperAdmin() && !$user->isQA()) {
             $query->where(function($q) use ($user) {
                 $q->where('status', $user->role)
@@ -163,12 +161,8 @@ class ReportController extends Controller
 
     public function export(Request $request)
     {
-        // Proteksi Export hanya untuk QA/Admin
-        if (!auth()->user()->isSuperAdmin() && !auth()->user()->isQA()) {
-            abort(403);
-        }
-
         $fileName = 'cpb-report-' . date('Y-m-d') . '.xlsx';
         return Excel::download(new CPBExport($request), $fileName);
+        
     }
 }

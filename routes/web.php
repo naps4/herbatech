@@ -96,10 +96,13 @@ Route::middleware(['auth'])->group(function () {
         // 1. Diakses semua role (Visibilitas data difilter di ReportController@index)
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/audit', [ReportController::class, 'audit'])->name('audit');
+        
+        // PERUBAHAN DI SINI: Route export dikeluarkan dari middleware Superadmin/QA
+        Route::get('/export', [ReportController::class, 'export'])->name('export');
 
         // 2. Data Manajerial & Sensitif (Hanya Superadmin & QA)
         Route::middleware(['role:superadmin,qa'])->group(function () {
-            Route::get('/export', [ReportController::class, 'export'])->name('export');
+            // Route export sudah dipindah ke atas, sisa performance
             Route::get('/performance', [ReportController::class, 'performance'])->name('performance');
         });
     });
