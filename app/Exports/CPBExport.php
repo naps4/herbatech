@@ -22,13 +22,13 @@ class CPBExport implements FromCollection, WithHeadings, WithMapping
         $user = auth()->user();
         $query = CPB::with(['creator', 'currentDepartment']);
         
-        // 1. TERAPKAN FILTER VISIBILITAS ROLE (Sama seperti di PDF & Web)
+        // 1. TERAPKAN FILTER VISIBILITAS ROLE
         if (!$user->isSuperAdmin() && (!$user->isQA() || $user->role !== 'qa') && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
-                $q->where('status', $user->role) // Dokumen sedang di departemen ini
+                $q->where('status', $user->role) 
                     ->orWhere('created_by', $user->id)
                     ->orWhereHas('handoverLogs', function ($subQuery) use ($user) {
-                        $subQuery->where('from_status', $user->role) // Pernah melewati departemen ini
+                        $subQuery->where('from_status', $user->role) 
                             ->orWhere('to_status', $user->role);
                     });
             });
@@ -43,28 +43,31 @@ class CPBExport implements FromCollection, WithHeadings, WithMapping
                 $query->whereDate('created_at', '<=', $this->request->end_date);
             }
             
-            // 3. Filter lainnya
+            // 3. Filter berdasarkan type
             if ($this->request->filled('type') && $this->request->type != 'all') {
-                $query->where('type', $this->request->type);
+                // PERBAIKAN DI SINI: Jika type = active, ambil yang belum di-released
+                if ($this->request->type === 'active') {
+                    $query->where('status', '!=', 'released');
+                } else {
+                    $query->where('type', $this->request->type);
+                }
             }
+
+            // 4. Filter berdasarkan status
             if ($this->request->filled('status') && $this->request->status != 'all') {
                 $query->where('status', $this->request->status);
             }
             
-            // 4. Perbaikan Filter Overdue (Tangani jika value 'true' atau 'yes')
+            // 5. Filter Overdue
             if ($this->request->filled('overdue') && $this->request->overdue !== 'all') {
                 $isOverdue = in_array($this->request->overdue, ['yes', 'true', '1']);
                 $query->where('is_overdue', $isOverdue);
             }
         }
         
-        // Kembalikan query secara langsung (TIDAK BOLEH pakai ->map() di sini)
         return $query->orderBy('created_at', 'desc')->get();
     }
     
-    /**
-     * Format data per baris yang akan diexport ke Excel
-     */
     public function map($cpb): array
     {
         return [
