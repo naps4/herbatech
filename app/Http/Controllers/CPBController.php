@@ -59,11 +59,10 @@ class CPBController extends Controller
                 ->where('status', '!=', 'released');
         }
 
-        // 3. Role-based filtering (MENGGUNAKAN ROLE, BUKAN ID)
+        // 3. Role-based filtering
         if (!$user->isSuperAdmin() && (!$user->isQA() || $user->role !== 'qa') && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
-                // --- BAGIAN INI DIUBAH MENJADI MENGGUNAKAN $user->role ---
-                $q->where('status', $user->role) // Status CPB ada di departemen role ini
+                $q->where('status', $user->role) 
                     ->orWhere('created_by', $user->id)
                     ->orWhereHas('handoverLogs', function ($subQuery) use ($user) {
                         $subQuery->where('from_status', $user->role) 
@@ -86,13 +85,12 @@ class CPBController extends Controller
         $user = auth()->user();
         $query = CPB::where('status', '!=', 'released')->latest();
 
-        // Terapkan Filter Visibilitas Role (MENGGUNAKAN ROLE, AGAR DATA MUNCUL)
         if (!$user->isSuperAdmin() && (!$user->isQA() || $user->role !== 'qa') && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
-                $q->where('status', $user->role) // Berdasarkan ROLE departemen
+                $q->where('status', $user->role)
                     ->orWhere('created_by', $user->id)
                     ->orWhereHas('handoverLogs', function ($subQuery) use ($user) {
-                        $subQuery->where('from_status', $user->role) // PERNAH di departemen ini
+                        $subQuery->where('from_status', $user->role)
                             ->orWhere('to_status', $user->role);
                     });
             });
@@ -119,7 +117,6 @@ class CPBController extends Controller
         $user = auth()->user();
         $query = \App\Models\CPB::where('status', '!=', 'released')->latest();
 
-        // Terapkan Filter Visibilitas Role (MENGGUNAKAN ROLE, AGAR DATA MUNCUL)
         if (!$user->isSuperAdmin() && (!$user->isQA() || $user->role !== 'qa') && $user->role !== 'rnd') {
             $query->where(function ($q) use ($user) {
                 $q->where('status', $user->role)
@@ -147,7 +144,6 @@ class CPBController extends Controller
         $nextDepartment = $cpb->getNextDepartment();
         $canHandover = Gate::allows('handover', $cpb);
 
-        // FITUR: Cek apakah user saat ini sudah mengunggah dokumen di tahap ini
         $hasAttachment = $cpb->attachments()
             ->where('uploaded_by', auth()->id())
             ->exists();
@@ -161,7 +157,6 @@ class CPBController extends Controller
             abort(403);
         }
 
-        // VALIDASI DOKUMEN: User tidak boleh masuk ke form jika belum upload file
         $hasAttachment = $cpb->attachments()->where('uploaded_by', auth()->id())->exists();
         if (!$hasAttachment && !auth()->user()->isSuperAdmin()) {
             return redirect()->route('cpb.show', $cpb)
@@ -194,7 +189,6 @@ class CPBController extends Controller
         try {
             $receiver = User::findOrFail($request->receiver_id);
 
-            // Simpan file jika dilampirkan langsung di form handover
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
                 $path = $file->storeAs('attachments/' . $cpb->id, time() . '_' . $file->getClientOriginalName(), 'public');
@@ -243,11 +237,15 @@ class CPBController extends Controller
             abort(403);
         }
 
+        // 1. Validasi tambahan untuk input SLA Custom
         $validated = $request->validate([
             'batch_number' => 'required|unique:cpbs,batch_number|max:50',
             'type' => 'required|in:pengolahan,pengemasan',
             'product_name' => 'required|max:100',
             'file' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:20480',
+            'use_custom_time' => 'nullable',
+            'sla' => 'nullable|array',
+            'sla.*' => 'nullable|numeric|min:1',
         ]);
 
         $creator = auth()->user();
@@ -260,8 +258,15 @@ class CPBController extends Controller
             }
         }
 
+        // 2. Logic untuk mengubah array SLA menjadi string JSON
+        $customSlas = null;
+        if ($request->filled('use_custom_time') && $request->filled('sla')) {
+            $customSlas = json_encode($request->sla);
+        }
+
         DB::beginTransaction();
         try {
+            // 3. Masukkan variable JSON tersebut ke database
             $cpb = CPB::create([
                 'batch_number' => $validated['batch_number'],
                 'type' => $validated['type'],
@@ -270,6 +275,7 @@ class CPBController extends Controller
                 'current_department_id' => $currentDeptId,
                 'status' => 'rnd',
                 'entered_current_status_at' => now(),
+                'custom_slas' => $customSlas, // Simpan ke dalam kolom baru
             ]);
 
             if ($request->hasFile('file')) {
@@ -417,17 +423,14 @@ class CPBController extends Controller
 
     public function release(CPB $cpb)
     {
-        // Gembok 1: Cek Permission Gate standar
         if (!Gate::allows('release', $cpb)) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Gembok 2: Pastikan status saat ini BUKAN rework
         if ($cpb->is_rework) {
             return back()->with('error', 'Gagal merilis produk! Dokumen ini masih dalam status Rework/Perbaikan.');
         }
 
-        // Gembok 3: Pastikan dokumen ini benar-benar ada di tahap QA Final
         if (!$cpb->is_final_qa) {
             return back()->with('error', 'Dokumen belum memenuhi syarat QA Final (Harus melewati QC terlebih dahulu).');
         }
@@ -441,7 +444,6 @@ class CPBController extends Controller
                 'is_overdue' => false,
             ]);
 
-            // Create handover log for release
             HandoverLog::create([
                 'cpb_id' => $cpb->id,
                 'from_status' => $oldStatus,

@@ -94,7 +94,7 @@ class UserController extends Controller
 
     public function showProfile()
     {
-        $user = auth()->user(); // Mengambil data user yang sedang login
+        $user = auth()->user(); 
         return view('admin.users.show', compact('user'));
     }
 

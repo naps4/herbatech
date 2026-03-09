@@ -41,7 +41,15 @@
                     <div class="col-md-6 border-right">
                         <dl class="row mb-0">
                             <dt class="col-sm-5 text-muted">No. Batch</dt>
-                            <dd class="col-sm-7 font-weight-bold text-lg">{{ $cpb->batch_number }}</dd>
+                            <dd class="col-sm-7 font-weight-bold text-lg">
+                                {{ $cpb->batch_number }}
+                                {{-- INDIKATOR SLA KUSTOM --}}
+                                @if(!empty($cpb->custom_slas))
+                                    <span class="badge badge-warning text-dark ml-2" style="font-size: 0.55em; vertical-align: middle;" data-toggle="tooltip" title="Dokumen ini menggunakan aturan target waktu khusus">
+                                        <i class="fas fa-stopwatch"></i> SLA KUSTOM
+                                    </span>
+                                @endif
+                            </dd>
                             
                             <dt class="col-sm-5 text-muted">Jenis</dt>
                             <dd class="col-sm-7">
@@ -229,6 +237,10 @@
                     </h1>
                     <span class="ml-2 font-weight-bold">JAM</span>
                 </div>
+                
+                {{-- TAMBAHAN: Keterangan dari Total Limit --}}
+                <div class="text-muted small mb-2">dari batas target <strong>{{ $cpb->time_limit }} jam</strong></div>
+                
                 <div class="progress progress-xxs mb-3" style="height: 4px;">
                     @php 
                         $percentage = $cpb->time_limit > 0 ? ($cpb->time_remaining / $cpb->time_limit) * 100 : 0;

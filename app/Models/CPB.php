@@ -18,7 +18,7 @@ class CPB extends Model
     protected $table = 'cpbs';
 
     protected $attributes = [
-    'schedule_duration' => 0,
+        'schedule_duration' => 0,
     ];
 
     protected $fillable = [
@@ -33,7 +33,8 @@ class CPB extends Model
         'is_overdue',
         'overdue_since',
         'is_rework',
-        'rework_note'
+        'rework_note',
+        'custom_slas', // <-- [BARU] Tambahkan field ini agar JSON bisa disimpan
     ];
 
     protected $casts = [
@@ -121,7 +122,29 @@ class CPB extends Model
 
     public function getTimeLimitAttribute()
     {
-        $limits = [
+        if ($this->status === 'released') {
+            return 0;
+        }
+
+        // 1. Tentukan key status yang akan dipakai. 
+        // Beda antara 'qa' biasa dan 'qa_final' berdasarkan accessor is_final_qa
+        $statusKey = $this->status;
+        if ($this->status === 'qa' && $this->is_final_qa) {
+            $statusKey = 'qa_final';
+        }
+
+        // 2. CEK PRIORITAS UTAMA: Apakah CPB ini memiliki settingan SLA Kustom dari JSON database?
+        if (!empty($this->custom_slas)) {
+            $customLimits = json_decode($this->custom_slas, true);
+            
+            // Jika status/role saat ini ada di dalam JSON kustom, gunakan waktu tersebut
+            if (isset($customLimits[$statusKey])) {
+                return (int) $customLimits[$statusKey];
+            }
+        }
+
+        // 3. FALLBACK: Jika tidak ada kustom SLA, gunakan waktu standar bawaan (default limits)
+        $defaultLimits = [
             'rnd' => 24,
             'qa' => 24,
             'ppic' => 4,
@@ -129,10 +152,9 @@ class CPB extends Model
             'produksi' => $this->schedule_duration > 0 ? $this->schedule_duration : 48,
             'qc' => 4,
             'qa_final' => 24, 
-            'released' => 0
         ];
     
-        return $limits[$this->status] ?? 24;
+        return $defaultLimits[$statusKey] ?? 24;
     }
 
     public function getTimeRemainingAttribute()

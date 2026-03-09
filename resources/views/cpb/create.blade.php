@@ -5,8 +5,6 @@
 @section('page-title', '')
 @section('breadcrumb', '')
 
-
-
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -26,29 +24,11 @@
                                 <i class="fas fa-barcode mr-1"></i> Identitas Batch
                             </h6>
                             <div class="row">
-                                <!-- <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="file">Lampiran Dokumen <span class="text-danger">*</span></label>
-                                        <div class="custom-file">
-                                            <input type="file" 
-                                                class="custom-file-input @error('file') is-invalid @enderror" 
-                                                id="file" 
-                                                name="file" 
-                                                required> <label class="custom-file-label" for="file">Pilih file (Wajib)...</label>
-                                        </div>
-                                        <small class="text-info">
-                                            <i class="fas fa-info-circle"></i> Dokumen wajib dilampirkan agar tombol "Simpan & Teruskan" aktif.
-                                        </small>
-                                        @error('file')
-                                            <span class="text-danger small"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                </div> -->
                                 <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>No. Batch</label>
-                                    <input type="text" id="batch_number" name="batch_number" class="form-control" readonly required>
-                                </div>
+                                    <div class="form-group">
+                                        <label>No. Batch</label>
+                                        <input type="text" id="batch_number" name="batch_number" class="form-control" readonly required>
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -64,7 +44,7 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="form-group">
                                         <label for="product_name">Nama Produk <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control @error('product_name') is-invalid @enderror" 
@@ -75,6 +55,66 @@
                                         @enderror
                                     </div>
                                 </div>
+
+                                {{-- FITUR INPUT WAKTU CUSTOM (DISEMBUNYIKAN SECARA DEFAULT) --}}
+                                <div class="col-md-12 mt-3 pt-3 border-top">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="useCustomTime" name="use_custom_time" value="1">
+                                        <label class="custom-control-label text-muted" for="useCustomTime">
+                                            <i class="fas fa-stopwatch"></i> Atur Batas Waktu SLA Kustom untuk Setiap Departemen (Opsional)
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="row mt-3 bg-light p-3 rounded border" id="customTimeWrapper" style="display: none;">
+                                        <div class="col-md-12 mb-3">
+                                            <small class="text-info"><i class="fas fa-info-circle"></i> Tentukan target waktu maksimal (dalam jam) dokumen berada di masing-masing departemen.</small>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <div class="form-group">
+                                                <label>RND</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[rnd]" value="24">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <div class="form-group">
+                                                <label>QA Review</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[qa]" value="24">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <div class="form-group">
+                                                <label>PPIC</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[ppic]" value="4">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <div class="form-group">
+                                                <label>Warehouse</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[wh]" value="24">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-6">
+                                            <div class="form-group">
+                                                <label>Produksi</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[produksi]" value="48">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-6">
+                                            <div class="form-group">
+                                                <label>QC</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[qc]" value="4">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-6">
+                                            <div class="form-group">
+                                                <label>QA Final</label>
+                                                <input type="number" min="1" class="form-control custom-sla-input" name="sla[qa_final]" value="24">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- END FITUR INPUT WAKTU CUSTOM --}}
+
                             </div>
                         </div>
 
@@ -180,7 +220,7 @@ $(document).ready(function() {
         const year = new Date().getFullYear();
         const typeCode = type === 'pengolahan' ? 'P' : 'K';
         
-        // Menggunakan url() agar alamatnya lengkap (http://127.0.0.1:8000/api/...)
+        // Menggunakan url() agar alamatnya lengkap
         const targetUrl = "{{ route('cpb.last-number') }}";
         
         $.get(targetUrl, { type: type }, function(data) {
@@ -193,6 +233,19 @@ $(document).ready(function() {
             // Jika masih 404, kita beri nomor manual sementara
             $('#batch_number').val(`CPB-${year}-${typeCode}001`);
         });
+    });
+
+    // --- SCRIPT TAMBAHAN UNTUK FITUR WAKTU CUSTOM ---
+    $('#useCustomTime').change(function() {
+        if($(this).is(':checked')) {
+            $('#customTimeWrapper').slideDown();
+            // Tambahkan validasi required ke semua input waktu menggunakan class
+            $('.custom-sla-input').attr('required', true); 
+        } else {
+            $('#customTimeWrapper').slideUp();
+            // Hapus status required dari semua input waktu jika dimatikan
+            $('.custom-sla-input').removeAttr('required'); 
+        }
     });
 });
 
